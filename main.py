@@ -26,25 +26,43 @@ intents.members = True
 # Der Bot reagiert zeitgleich auf /, ^ und $
 bot = commands.Bot(command_prefix=["/", "^", "$"], intents=intents, help_command=None)
 
-
-# Ein einfacher Speicher im RAM für Verwarnungen (Achtung: Löscht sich bei Bot-Neustart!)
+# Speicherung im RAM für Verwarnungen
 verwarnungen_speicher = {}
 
 # ==================== DEINE SERVER CONFIG ====================
 # 1. GANZ HOHE ROLLEN (Absolut geschützt vor Kicks, Downranks, Strikes, Suspendierungen!)
-PROJEKTLEITUNG_ROLLEN = ["⚒︎ || Head behind everything", "♕✯ |❘| David | Founder", "✵ || Mika | Co-Founder"]
+PROJEKTLEITUNG_ROLLEN = [
+    "⚒︎ || Head behind everything", 
+    "♕✯ |❘| David | Founder", 
+    "✵ || Mika | Co-Founder"
+]
 
 # 2. NORMALE SPIELER & VIP (Werden beim Teamkick NIEMALS gelöscht)
 NORMALE_SPIELER_ROLLEN = [
-    "🟢 || Verify", "✋ 〣 Member", "-------Others--------", "👮 〣  Polizei", "@everyone"
+    "🟢 || Verify", 
+    "✋ 〣 Member", 
+    "-------Others--------", 
+    "👮 〣  Polizei", 
+    "@everyone"
 ]
 
 # 3. ERLAUBTE STAFF-ROLLEN (Nur wer eine dieser Rollen hat, darf die System-Befehle nutzen!)
-ERLAUBTE_STAFF_ROLLEN = ["┗⎯⎯⎯|▪️|PROJEKT LEAD|▪️|⎯⎯⎯┓", "┗⎯⎯⎯|▪️|REAL CREATORS|▪️|⎯⎯⎯┓", "┗⎯⎯⎯|🛑|OWNERS|🛑|⎯⎯⎯┑", "┗⎯⎯⎯|🔴|HIGHTEAM|🔴|⎯⎯⎯┑"]
+ERLAUBTE_STAFF_ROLLEN = [
+    "┗⎯⎯⎯|▪️|PROJEKT LEAD|▪️|⎯⎯⎯┓", 
+    "┗⎯⎯⎯|▪️|REAL CREATORS|▪️|⎯⎯⎯┓", 
+    "┗⎯⎯⎯|🛑|OWNERS|🛑|⎯⎯⎯┑", 
+    "┗⎯⎯⎯|🔴|HIGHTEAM|🔴|⎯⎯⎯┑"
+]
 
 # 4. DIE SUSPENDIERT-ROLLE (Wird beim Befehl ^suspend vergeben)
 SUSPEND_ROLLE_NAME = "Suspendiert"
 # =============================================================
+
+def hat_rolle_aus_liste(member, rollen_liste):
+    for r in member.roles:
+        if r.name in rollen_liste:
+            return True
+    return False
 
 @bot.event
 async def on_ready():
@@ -59,12 +77,6 @@ async def ping(ctx):
 @bot.command()
 async def hallo(ctx):
     await ctx.send(f"Hallo {ctx.author.mention}! Schön dich zu sehen.")
-
-def hat_rolle_aus_liste(member, rollen_liste):
-    for r in member.roles:
-        if r.name in rollen_liste:
-            return True
-    return False
 
 # ==================== UPRANK BEFEHL ====================
 @bot.command()
@@ -209,14 +221,14 @@ async def strike(ctx, target: discord.Member = None, *, grund: str = "Fehlverhal
     embed.add_field(name="📝 Begründung", value=grund, inline=False)
     embed.add_field(name="✍️ Unterschrift", value=ctx.author.mention, inline=False)
     await ctx.send(embed=embed)
-     
+
 # ==================== SUSPENDIEREN ====================
 @bot.command()
 async def suspend(ctx, target: discord.Member = None, *, grund: str = "Dienstvergehen / Untersuchung"):
     if not hat_rolle_aus_liste(ctx.author, ERLAUBTE_STAFF_ROLLEN) and ctx.author != ctx.guild.owner:
         return
     if not target:
-        await ctx.send(f"❌ Nutzen: {ctx.prefix}suspend @Spieler [Grund]")
+        await ctx.send(f"❌ Nutzen: `{ctx.prefix}suspend @Spieler [Grund]`")
         return
     if hat_rolle_aus_liste(target, PROJEKTLEITUNG_ROLLEN):
         await ctx.send("❌ Führungsebene kann nicht suspendiert werden!")
@@ -225,7 +237,7 @@ async def suspend(ctx, target: discord.Member = None, *, grund: str = "Dienstver
     try:
         suspend_rolle = discord.utils.get(ctx.guild.roles, name=SUSPEND_ROLLE_NAME)
         if not suspend_rolle:
-            await ctx.send(f"❌ Fehler: Bitte erstelle zuerst eine Rolle namens {SUSPEND_ROLLE_NAME} auf deinem Server!")
+            await ctx.send(f"❌ Fehler: Bitte erstelle zuerst eine Rolle namens `{SUSPEND_ROLLE_NAME}` auf deinem Server!")
             return
             
         for index_rolle in target.roles:
@@ -234,7 +246,7 @@ async def suspend(ctx, target: discord.Member = None, *, grund: str = "Dienstver
                     await target.remove_roles(index_rolle)
                 except:
                     continue
-                    
+            
         await target.add_roles(suspend_rolle)
         embed = discord.Embed(title="🛑 SYSTEM: DIENSTSUSPENDIERUNG", color=discord.Color.purple())
         embed.add_field(name="👤 Betroffener", value=target.mention, inline=False)
@@ -251,7 +263,7 @@ async def unsuspend(ctx, target: discord.Member = None, alte_rolle: discord.Role
     if not hat_rolle_aus_liste(ctx.author, ERLAUBTE_STAFF_ROLLEN) and ctx.author != ctx.guild.owner:
         return
     if not target or not alte_rolle:
-        await ctx.send(f"❌ Nutzen: {ctx.prefix}unsuspend @Spieler @AlteStaffRolle")
+        await ctx.send(f"❌ Nutzen: `{ctx.prefix}unsuspend @Spieler @AlteStaffRolle`")
         return
         
     try:
@@ -277,12 +289,12 @@ async def status(ctx):
     embed.add_field(name="👥 Überwachte Mitglieder", value=f"{ctx.guild.member_count}", inline=False)
     await ctx.send(embed=embed)
 
-# ==================== NEU: HILFE BEFEHL ====================
+# ==================== HILFE BEFEHL ====================
 @bot.command(name="help", aliases=["hilfe"])
 async def help_command(ctx):
     embed = discord.Embed(
         title="📋 System-Zentrale: Befehlsübersicht", 
-        description="Hier sind alle verfügbaren Befehle für das RP-Projekt. Nutze `^`, `/` oder `$` vor dem Befehl.",
+        description="Hier sind alle verfügbaren Befehle für das RP-Projekt.\nNutze `^`, `/` oder `$` vor dem Befehl.",
         color=discord.Color.blue()
     )
     
@@ -320,6 +332,8 @@ async def help_command(ctx):
     embed.set_footer(text=f"Abgerufen von {ctx.author.name}")
     await ctx.send(embed=embed)
 
-bot.run(os.environ.get('DISCORD_TOKEN'))
-
- 
+token = os.environ.get('DISCORD_TOKEN')
+if token:
+    bot.run(token)
+else:
+    print("❌ FEHLER: Kein DISCORD_TOKEN in den Environment Variables gefunden!")
