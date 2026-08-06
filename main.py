@@ -434,6 +434,55 @@ async def testjoin(ctx):
         await ctx.send("❌ Du musst in einem Sprachkanal sein!")
 
 @bot.command(name="status")
+@commands.has_role("♕✯ |❘| David | Founder")
+async def status(ctx, zustand: str):
+    # Den Channel suchen (heißt bei dir "🌐║status")
+    status_channel = discord.utils.get(ctx.guild.text_channels, name="🌐║status")
+    
+    if not status_channel:
+        await ctx.send("❌ Den Channel `🌐║status` konnte ich nicht finden!")
+        return
+
+    zustand = zustand.lower()
+    if zustand == "an":
+        await status_channel.send("🟢 **Der RP-Status ist jetzt: AKTIV / ONLINE!**")
+        await ctx.send("✅ RP-Status auf AN gestellt.")
+    elif zustand == "aus":
+        await status_channel.send("🔴 **Der RP-Status ist jetzt: INAKTIV / OFFLINE!**")
+        await ctx.send("✅ RP-Status auf AUS gestellt.")
+    else:
+        await ctx.send("⚠️ Bitte nutze `^status an` oder `^status aus`.")
+
+@status.error
+async def status_error(ctx, error):
+    if isinstance(error, commands.MissingRole):
+        await ctx.send("❌ Dazu hast du keine Berechtigung! Nur der Founder darf das.")
+
+@bot.command(name="lock")
+@commands.has_role("♕✯ |❘| David | Founder")
+async def lock_all(ctx):
+    await ctx.send("🔒 Alle Kanäle werden für normale User geschlossen...")
+    for channel in ctx.guild.text_channels:
+        # Dem @everyone-Rollen-Objekt das Schreiben verbieten
+        await channel.set_permissions(ctx.guild.default_role, send_messages=False)
+    await ctx.send("🔒 **Alle Chats wurden erfolgreich geschlossen!** Nur noch der Founder kann schreiben.")
+
+@bot.command(name="unlock")
+@commands.has_role("♕✯ |❘| David | Founder")
+async def unlock_all(ctx):
+    await ctx.send("🔓 Alle Kanäle werden wieder geöffnet...")
+    for channel in ctx.guild.text_channels:
+        # Dem @everyone-Rollen-Objekt das Schreiben wieder erlauben
+        await channel.set_permissions(ctx.guild.default_role, send_messages=True)
+    await ctx.send("🔓 **Alle Chats sind wieder geöffnet!**")
+
+@lock_all.error
+@unlock_all.error
+async def lock_error(ctx, error):
+    if isinstance(error, commands.MissingRole):
+        await ctx.send("❌ Dazu hast du keine Berechtigung! Nur der Founder darf das.")
+
+@bot.command(name="status")
 async def status_prefix(ctx):
     embed = discord.Embed(
         title="⚙️ SYSTEM X EH RP • STATUS ZENTRALE", 
