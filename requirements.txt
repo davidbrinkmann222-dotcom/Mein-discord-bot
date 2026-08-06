@@ -1,4 +1,4 @@
-discord.py
-flask
 PyNaCl
+flask
+discord.py
 yt-dlp
