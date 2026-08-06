@@ -218,25 +218,6 @@ async def suspend(ctx, target: discord.Member = None, *, grund: str = "Dienstver
         await ctx.send(f"❌ Nutzen: {ctx.prefix}suspend @Spieler [Grund]")
         return
         
-        # ==================== TEAM STRIKE ====================
-@bot.command()
-async def strike(ctx, target: discord.Member = None, *, grund: str = "Fehlverhalten im Dienst"):
-    if not hat_rolle_aus_liste(ctx.author, ERLAUBTE_STAFF_ROLLEN) and ctx.author != ctx.guild.owner:
-        return
-    if not target:
-        await ctx.send(f"❌ Nutzen: `{ctx.prefix}strike @Spieler [Grund]`")
-        return
-    if hat_rolle_aus_liste(target, PROJEKTLEITUNG_ROLLEN):
-        await ctx.send("❌ Führungsebene kann keine Strikes erhalten!")
-        return
-
-    embed = discord.Embed(title="🛡️ SYSTEM: TEAM-STRIKE", color=discord.Color.dark_red())
-    embed.add_field(name="👤 Staff-Mitglied", value=target.mention, inline=False)
-    embed.add_field(name="⚠️ Status", value="1x Verwarnung im Dienst-Akte eingetragen", inline=False)
-    embed.add_field(name="📝 Begründung", value=grund, inline=False)
-    embed.add_field(name="✍️ Unterschrift", value=ctx.author.mention, inline=False)
-    await ctx.send(embed=embed)
-
 # ==================== SUSPENDIEREN ====================
 @bot.command()
 async def suspend(ctx, target: discord.Member = None, *, grund: str = "Dienstvergehen / Untersuchung"):
