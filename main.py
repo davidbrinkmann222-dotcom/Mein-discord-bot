@@ -433,67 +433,78 @@ async def testjoin(ctx):
     else:
         await ctx.send("❌ Du musst in einem Sprachkanal sein!")
 
-@bot.command(name="rpstatus")
-@commands.has_role("♕✯ |❘| David | Founder")
-async def status(ctx, zustand: str):
-    # Den Channel suchen (heißt bei dir "🌐║status")
-    status_channel = discord.utils.get(ctx.guild.text_channels, name="🌐║status")
+import discord
+from discord import app_commands
+from discord.ext import commands
+
+# 1. RP-Status Befehl als Slash-Command
+@bot.tree.command(name="rpstatus", description="Ändert den RP-Status (an/aus)")
+@app_commands.describe(zustand="Wähle 'an' oder 'aus'")
+@app_commands.choices(zustand=[
+    app_commands.Choice(name="An", value="an"),
+    app_commands.Choice(name="Aus", value="aus")
+])
+async def rpstatus(interaction: discord.Interaction, zustand: str):
+    # Überprüfen, ob der User die Rolle hat
+    role_name = "♕✯ |❘| David | Founder"
+    role = discord.utils.get(interaction.guild.roles, name=role_name)
     
-    if not status_channel:
-        await ctx.send("❌ Den Channel `🌐║status` konnte ich nicht finden!")
+    if not role or role not in interaction.user.roles:
+        await interaction.response.send_message("❌ Dazu hast du keine Berechtigung! Nur der Founder darf das.", ephemeral=True)
         return
 
-    zustand = zustand.lower()
+    status_channel = discord.utils.get(interaction.guild.text_channels, name="🌐║status")
+    
+    if not status_channel:
+        await interaction.response.send_message("❌ Den Channel `🌐║status` konnte ich nicht finden!", ephemeral=True)
+        return
+
     if zustand == "an":
         await status_channel.send("🟢 **Der RP-Status ist jetzt: AKTIV / ONLINE!**")
-        await ctx.send("✅ RP-Status auf AN gestellt.")
+        await interaction.response.send_message("✅ RP-Status auf AN gestellt.", ephemeral=True)
     elif zustand == "aus":
         await status_channel.send("🔴 **Der RP-Status ist jetzt: INAKTIV / OFFLINE!**")
-        await ctx.send("✅ RP-Status auf AUS gestellt.")
-    else:
-        await ctx.send("⚠️ Bitte nutze `^status an` oder `^status aus`.")
+        await interaction.response.send_message("✅ RP-Status auf AUS gestellt.", ephemeral=True)
 
-@status.error
-async def status_error(ctx, error):
-    if isinstance(error, commands.MissingRole):
-        await ctx.send("❌ Dazu hast du keine Berechtigung! Nur der Founder darf das.")
 
-@bot.command(name="lock")
-@commands.has_role("♕✯ |❘| David | Founder")
-async def lock_all(ctx):
-    await ctx.send("🔒 Alle Kanäle werden für normale User geschlossen...")
-    for channel in ctx.guild.text_channels:
-        # Dem @everyone-Rollen-Objekt das Schreiben verbieten
-        await channel.set_permissions(ctx.guild.default_role, send_messages=False)
-    await ctx.send("🔒 **Alle Chats wurden erfolgreich geschlossen!** Nur noch der Founder kann schreiben.")
+# 2. Lock und Unlock als Slash-Commands (/lock und /unlock)
+@bot.tree.command(name="lock", description="Schließt alle Chats für normale User")
+async def lock_channels(interaction: discord.Interaction):
+    role_name = "♕✯ |❘| David | Founder"
+    role = discord.utils.get(interaction.guild.roles, name=role_name)
+    
+    if not role or role not in interaction.user.roles:
+        await interaction.response.send_message("❌ Dazu hast du keine Berechtigung!", ephemeral=True)
+        return
 
-@bot.command(name="unlock")
-@commands.has_role("♕✯ |❘| David | Founder")
-async def unlock_all(ctx):
-    await ctx.send("🔓 Alle Kanäle werden wieder geöffnet...")
-    for channel in ctx.guild.text_channels:
-        # Dem @everyone-Rollen-Objekt das Schreiben wieder erlauben
-        await channel.set_permissions(ctx.guild.default_role, send_messages=True)
-    await ctx.send("🔓 **Alle Chats sind wieder geöffnet!**")
+    await interaction.response.send_message("🔒 Alle Kanäle werden geschlossen...", ephemeral=True)
+    
+    for channel in interaction.guild.text_channels:
+        # Entzieht der @everyone-Rolle das Schreibrecht komplett
+        await channel.set_permissions(interaction.guild.default_role, send_messages=False)
+        
+    for channel in interaction.guild.text_channels:
+        await channel.send("🔒 **Dieser Chat wurde vom Founder geschlossen!**")
 
-@lock_all.error
-@unlock_all.error
-async def lock_error(ctx, error):
-    if isinstance(error, commands.MissingRole):
-        await ctx.send("❌ Dazu hast du keine Berechtigung! Nur der Founder darf das.")
 
-@bot.command(name="status")
-async def status_prefix(ctx):
-    embed = discord.Embed(
-        title="⚙️ SYSTEM X EH RP • STATUS ZENTRALE", 
-        description="Aktuelle Systemwerte des Server-Bots:\n⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯",
-        color=discord.Color.from_rgb(41, 128, 185)
-    )
-    embed.add_field(name="🟢 Status", value="`Online & Bereit`", inline=True)
-    embed.add_field(name="📶 Latenz", value=f"`{round(bot.latency * 1000)} ms`", inline=True)
-    embed.add_field(name="👥 Mitglieder", value=f"`{ctx.guild.member_count}`", inline=True)
-    embed.set_footer(text=f"Abgerufen von {ctx.author.name}", icon_url=ctx.author.display_avatar.url)
-    await ctx.send(embed=embed)
+@bot.tree.command(name="unlock", description="Öffnet alle Chats wieder für alle")
+async def unlock_channels(interaction: discord.Interaction):
+    role_name = "♕✯ |❘| David | Founder"
+    role = discord.utils.get(interaction.guild.roles, name=role_name)
+    
+    if not role or role not in interaction.user.roles:
+        await interaction.response.send_message("❌ Dazu hast du keine Berechtigung!", ephemeral=True)
+        return
+
+    await interaction.response.send_message("🔓 Alle Kanäle werden wieder geöffnet...", ephemeral=True)
+    
+    for channel in interaction.guild.text_channels:
+        # Setzt das Schreibrecht für @everyone auf Standard zurück
+        await channel.set_permissions(interaction.guild.default_role, send_messages=None)
+        
+    for channel in interaction.guild.text_channels:
+        await channel.send("🔓 **Dieser Chat ist wieder geöffnet!**")
+
 
 @bot.tree.command(name="status", description="Zeigt die Systemwerte des Bots an")
 async def status_slash(interaction: discord.Interaction):
