@@ -24,35 +24,66 @@ HIGHSTAFF_ROLLEN = [
 REQUEST_KANAL_NAME = "uprank-requests"
 
 
-# ==================== UPRANK BUTTONS ====================
-class UprankRequestView(discord.ui.View):
-    def __init__(self, target_user: discord.Member):
-        super().__init__(timeout=None)
+# ==================== BESTÄTIGUNGS-BUTTONS (SICHERHEITSABFRAGE) ====================
+class ConfirmUprankView(discord.ui.View):
+    def __init__(self, target_user: discord.Member, selected_role: discord.Role, original_message: discord.Message):
+        super().__init__(timeout=60) # 60 Sekunden Zeit zum Bestätigen
         self.target_user = target_user
+        self.selected_role = selected_role
+        self.original_message = original_message
 
-    @discord.ui.button(label="✅ Genehmigen (Uprank)", style=discord.ButtonStyle.green, custom_id="uprank_accept")
-    async def accept(self, interaction: discord.Interaction, button: discord.ui.Button):
+    @discord.ui.button(label="✅ Ja, Bestätigen & Vergeben", style=discord.ButtonStyle.green)
+    async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not any(r.name in HIGHSTAFF_ROLLEN for r in interaction.user.roles):
             await interaction.response.send_message("❌ Nur das Highstaff-Team kann Anfragen bearbeiten!", ephemeral=True)
             return
 
+        # 1. Strich-Rollen beim Spieler entfernen
         for r_name in STRICH_ROLLEN:
             rolle = discord.utils.get(interaction.guild.roles, name=r_name)
             if rolle and rolle in self.target_user.roles:
                 await self.target_user.remove_roles(rolle)
 
+        # 2. Neue Rang-Rolle vergeben
+        await self.target_user.add_roles(self.selected_role)
+
+        # 3. Originale Antrag-Nachricht aktualisieren & deaktivieren
+        embed = self.original_message.embeds[0]
+        embed.color = discord.Color.green()
+        embed.title = "✅ UPRANK GENEHMIGT"
+        embed.add_field(name="Neuer Rang", value=self.selected_role.mention, inline=False)
+        embed.add_field(name="Bearbeitet von", value=interaction.user.mention, inline=False)
+
+        await self.original_message.edit(embed=embed, view=None)
+
+        # 4. Bestätigungsnachricht anpassen
+        for child in self.children:
+            child.disabled = True
+        
+        await interaction.response.edit_message(
+            content=f"🎉 **Erfolg!** {self.target_user.mention} hat die Rolle {self.selected_role.mention} erhalten. Striche wurden zurückgesetzt!", 
+            view=self
+        )
+
+    @discord.ui.button(label="❌ Abbrechen", style=discord.ButtonStyle.red)
+    async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not any(r.name in HIGHSTAFF_ROLLEN for r in interaction.user.roles):
+            await interaction.response.send_message("❌ Nur das Highstaff-Team kann Anfragen bearbeiten!", ephemeral=True)
+            return
+
         for child in self.children:
             child.disabled = True
 
-        embed = interaction.message.embeds[0]
-        embed.color = discord.Color.green()
-        embed.title = "✅ UPRANK GENEHMIGT"
-        embed.add_field(name="Bearbeitet von", value=interaction.user.mention, inline=False)
-        
-        await interaction.message.edit(embed=embed, view=self)
-        await interaction.response.send_message(f"🎉 Der Uprank für {self.target_user.mention} wurde genehmigt! Striche wurden zurückgesetzt.")
+        await interaction.response.edit_message(content="❌ Vorgehen abgebrochen. Es wurden keine Rollen verändert.", view=self)
 
-    @discord.ui.button(label="❌ Ablehnen", style=discord.ButtonStyle.red, custom_id="uprank_deny")
+
+# ==================== ANTRAGS-BUTTONS (NUR FÜR ABLEHNEN) ====================
+class UprankRequestView(discord.ui.View):
+    def __init__(self, target_user: discord.Member):
+        super().__init__(timeout=None)
+        self.target_user = target_user
+
+    @discord.ui.button(label="❌ Antrag Ablehnen", style=discord.ButtonStyle.red, custom_id="uprank_deny")
     async def deny(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not any(r.name in HIGHSTAFF_ROLLEN for r in interaction.user.roles):
             await interaction.response.send_message("❌ Nur das Highstaff-Team kann Anfragen bearbeiten!", ephemeral=True)
@@ -99,6 +130,66 @@ def setup_rangsystem(bot):
         # Neue Rolle vergeben
         await member.add_roles(next_role)
         return "SUCCESS"
+
+    # EVENT: REAKTION AUF ANTWORT-NACHRICHTEN
+    @bot.event
+    async def on_message(message: discord.Message):
+        # Ignoriere Nachrichten von Bots
+        if message.author.bot:
+            return
+
+        # Prüfe, ob die Nachricht eine ANTWORT (Reply) auf eine Bot-Nachricht im Uprank-Kanal ist
+        if message.reference and message.channel.name == REQUEST_KANAL_NAME:
+            try:
+                referenced_msg = await message.channel.fetch_message(message.reference.message_id)
+            except Exception:
+                return
+
+            # War die beantwortete Nachricht vom Bot und hat ein Embed?
+            if referenced_msg.author == bot.user and referenced_msg.embeds:
+                # Prüfe Highstaff-Rechte des Antwortenden
+                if not any(r.name in HIGHSTAFF_ROLLEN for r in message.author.roles):
+                    await message.channel.send("❌ Nur das Highstaff-Team kann auf Anträge antworten!", delete_after=5)
+                    return
+
+                # Prüfe, ob eine Rolle in der Nachricht erwähnt wurde
+                if not message.role_mentions:
+                    await message.channel.send("⚠️ Bitte antworte und erwähne die Rolle (z. B. `@NeuerRang`), die vergeben werden soll!", delete_after=8)
+                    return
+
+                # Die erwähnte Rolle greifen
+                selected_role = message.role_mentions[0]
+
+                # Ziel-User aus dem Embed extrahieren (Anhand der ID im Embed-Text)
+                embed = referenced_msg.embeds[0]
+                target_user = None
+                
+                for field in embed.fields:
+                    if field.name == "Spieler":
+                        # ID herausfiltern
+                        import re
+                        match = re.search(r'`(\d+)`', field.value)
+                        if match:
+                            user_id = int(match.group(1))
+                            target_user = message.guild.get_member(user_id)
+
+                if not target_user:
+                    await message.channel.send("❌ Spieler konnte nicht gefunden werden!", delete_after=5)
+                    return
+
+                # Sicherheitsabfrage senden!
+                confirm_view = ConfirmUprankView(target_user=target_user, selected_role=selected_role, original_message=referenced_msg)
+                
+                await message.reply(
+                    f"❓ **Bist du sicher?**\n\n"
+                    f"• **Spieler:** {target_user.mention}\n"
+                    f"• **Neue Rolle:** {selected_role.mention}\n"
+                    f"• **Aktion:** Alle 5 Striche werden zurückgesetzt.",
+                    view=confirm_view
+                )
+
+        # Normale Befehlsausführung erlauben
+        await bot.process_commands(message)
 
     # VOICE STATE UPDATE
     @bot.event
@@ -165,7 +256,13 @@ def setup_rangsystem(bot):
 
         embed = discord.Embed(
             title="📩 NEUER UPRANK-ANTRAG",
-            description=f"Der Spieler {interaction.user.mention} hat **5 Striche** und fordert einen Uprank an!",
+            description=(
+                f"Der Spieler {interaction.user.mention} hat **5 Striche** und fordert einen Uprank an!\n\n"
+                f"📌 **ANLEITUNG FÜR HIGHSTAFF:**\n"
+                f"1. Antworte auf diese Nachricht (Reply).\n"
+                f"2. Pinge/Erwähne die Rolle, die der Spieler erhalten soll (z. B. `@Rolle`).\n"
+                f"3. Bestätige im Anschluss die Abfrage mit dem Button!"
+            ),
             color=discord.Color.gold()
         )
         embed.add_field(name="Spieler", value=f"{interaction.user.name} (`{interaction.user.id}`)", inline=True)
