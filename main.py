@@ -437,15 +437,16 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-# 1. RP-Status Befehl als Slash-Command
-@bot.tree.command(name="rpstatus", description="Ändert den RP-Status (an/aus)")
+import discord
+from discord import app_commands
+
+@bot.tree.command(name="rpstatus", description="Ändert den RP-Status mit einem detaillierten Embed")
 @app_commands.describe(zustand="Wähle 'an' oder 'aus'")
 @app_commands.choices(zustand=[
     app_commands.Choice(name="An", value="an"),
     app_commands.Choice(name="Aus", value="aus")
 ])
 async def rpstatus(interaction: discord.Interaction, zustand: str):
-    # Überprüfen, ob der User die Rolle hat
     role_name = "♕✯ |❘| David | Founder"
     role = discord.utils.get(interaction.guild.roles, name=role_name)
     
@@ -455,17 +456,38 @@ async def rpstatus(interaction: discord.Interaction, zustand: str):
 
     status_channel = discord.utils.get(interaction.guild.text_channels, name="🌐║status")
     
+    if status_channel:
+        # Alte Nachrichten im Status-Channel löschen, damit es immer übersichtlich bleibt (optional)
+        try:
+            await status_channel.purge(limit=5)
+        except:
+            pass
+
     if not status_channel:
         await interaction.response.send_message("❌ Den Channel `🌐║status` konnte ich nicht finden!", ephemeral=True)
         return
 
+    # Das detaillierte Embed erstellen
+    embed = discord.Embed(title="🌐 ┃ ROLLEPLAY STATUS UPDATE", color=0x00FF00 if zustand == "an" else 0xFF0000)
+    
     if zustand == "an":
-        await status_channel.send("🟢 **Der RP-Status ist jetzt: AKTIV / ONLINE!**")
-        await interaction.response.send_message("✅ RP-Status auf AN gestellt.", ephemeral=True)
+        embed.description = "Der Server-Status wurde soeben vom Management aktualisiert."
+        embed.add_field(name="Status", value="🟢 **AKTIV & OFFEN**", inline=False)
+        embed.add_field(name="Informationen", value="• Das Roleplay ist nun offiziell im Gange.\n• Alle RP-Regeln sind ab sofort zu befolgen.\n• Viel Spaß an alle Teilnehmer!", inline=False)
+        embed.set_footer(text=f"Aktualisiert von {interaction.user.name}", icon_url=interaction.user.display_avatar.url)
+        
+        await status_channel.send(embed=embed)
+        await interaction.response.send_message("✅ RP-Status erfolgreich auf **AN** gesetzt und Embed gesendet!", ephemeral=True)
+        
     elif zustand == "aus":
-        await status_channel.send("🔴 **Der RP-Status ist jetzt: INAKTIV / OFFLINE!**")
-        await interaction.response.send_message("✅ RP-Status auf AUS gestellt.", ephemeral=True)
-
+        embed.color = 0xFF0000
+        embed.description = "Der Server-Status wurde soeben vom Management aktualisiert."
+        embed.add_field(name="Status", value="🔴 **INAKTIV / PAUSE**", inline=False)
+        embed.add_field(name="Informationen", value="• Das Roleplay ist vorübergehend pausiert oder beendet.\n• Bitte beachtet die OOC-Regeln in den entsprechenden Chats.\n• Weitere Infos folgen in Kürze.", inline=False)
+        embed.set_footer(text=f"Aktualisiert von {interaction.user.name}", icon_url=interaction.user.display_avatar.url)
+        
+        await status_channel.send(embed=embed)
+        await interaction.response.send_message("✅ RP-Status erfolgreich auf **AUS** gesetzt und Embed gesendet!", ephemeral=True)
 
 # 2. Lock und Unlock als Slash-Commands (/lock und /unlock)
 @bot.tree.command(name="lock", description="Schließt alle Chats für normale User")
