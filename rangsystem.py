@@ -104,7 +104,7 @@ class UprankRequestView(discord.ui.View):
 # ==================== MAIN SETUP ====================
 def setup_rangsystem(bot):
 
-    # Hilfsfunktion: Strich vergeben
+    # Hilfsfunktion: Einzeiligen Strich vergeben
     async def add_strike(member: discord.Member) -> str:
         current_level = 0
         for index, role_name in enumerate(STRICH_ROLLEN, start=1):
@@ -134,39 +134,31 @@ def setup_rangsystem(bot):
     # EVENT: REAKTION AUF ANTWORT-NACHRICHTEN
     @bot.event
     async def on_message(message: discord.Message):
-        # Ignoriere Nachrichten von Bots
         if message.author.bot:
             return
 
-        # Prüfe, ob die Nachricht eine ANTWORT (Reply) auf eine Bot-Nachricht im Uprank-Kanal ist
         if message.reference and message.channel.name == REQUEST_KANAL_NAME:
             try:
                 referenced_msg = await message.channel.fetch_message(message.reference.message_id)
             except Exception:
                 return
 
-            # War die beantwortete Nachricht vom Bot und hat ein Embed?
             if referenced_msg.author == bot.user and referenced_msg.embeds:
-                # Prüfe Highstaff-Rechte des Antwortenden
                 if not any(r.name in HIGHSTAFF_ROLLEN for r in message.author.roles):
                     await message.channel.send("❌ Nur das Highstaff-Team kann auf Anträge antworten!", delete_after=5)
                     return
 
-                # Prüfe, ob eine Rolle in der Nachricht erwähnt wurde
                 if not message.role_mentions:
                     await message.channel.send("⚠️ Bitte antworte und erwähne die Rolle (z. B. `@NeuerRang`), die vergeben werden soll!", delete_after=8)
                     return
 
-                # Die erwähnte Rolle greifen
                 selected_role = message.role_mentions[0]
 
-                # Ziel-User aus dem Embed extrahieren (Anhand der ID im Embed-Text)
                 embed = referenced_msg.embeds[0]
                 target_user = None
                 
                 for field in embed.fields:
                     if field.name == "Spieler":
-                        # ID herausfiltern
                         import re
                         match = re.search(r'`(\d+)`', field.value)
                         if match:
@@ -177,7 +169,6 @@ def setup_rangsystem(bot):
                     await message.channel.send("❌ Spieler konnte nicht gefunden werden!", delete_after=5)
                     return
 
-                # Sicherheitsabfrage senden!
                 confirm_view = ConfirmUprankView(target_user=target_user, selected_role=selected_role, original_message=referenced_msg)
                 
                 await message.reply(
@@ -188,7 +179,6 @@ def setup_rangsystem(bot):
                     view=confirm_view
                 )
 
-        # Normale Befehlsausführung erlauben
         await bot.process_commands(message)
 
     # VOICE STATE UPDATE
@@ -222,22 +212,39 @@ def setup_rangsystem(bot):
                             user_stats["count"] += 1
                             tages_vc_striche[user_id] = user_stats
 
-    # COMMAND: /givestrike
-    @bot.tree.command(name="givestrike", description="Vergibt manuell einen Strich")
-    @app_commands.describe(spieler="Der Spieler, der den Strich erhält")
-    async def givestrike(interaction: discord.Interaction, spieler: discord.Member):
+    # COMMAND: /givestrike MIT VARIABLE ANZAHL
+    @bot.tree.command(name="givestrike", description="Vergibt manuell Striche an einen Spieler")
+    @app_commands.describe(
+        spieler="Der Spieler, der die Striche erhält",
+        anzahl="Anzahl der Striche (Standard ist 1)"
+    )
+    async def givestrike(interaction: discord.Interaction, spieler: discord.Member, anzahl: int = 1):
         if not any(r.name in HIGHSTAFF_ROLLEN for r in interaction.user.roles):
             await interaction.response.send_message("❌ Du hast keine Berechtigung dafür!", ephemeral=True)
             return
 
-        res = await add_strike(spieler)
+        if anzahl <= 0:
+            await interaction.response.send_message("⚠️ Die Anzahl muss mindestens 1 sein!", ephemeral=True)
+            return
 
-        if res == "SUCCESS":
-            await interaction.response.send_message(f"🎓 **{spieler.mention}** hat erfolgreich einen Strich erhalten!")
-        elif res == "MAX_REACHED":
+        vergebene_striche = 0
+        letzter_status = ""
+
+        # Vergabe-Schleife für die gewünschte Anzahl an Strichen
+        for _ in range(anzahl):
+            res = await add_strike(spieler)
+            letzter_status = res
+            if res == "SUCCESS":
+                vergebene_striche += 1
+            elif res == "MAX_REACHED" or res.startswith("ROLE_NOT_FOUND"):
+                break
+
+        if vergebene_striche > 0:
+            await interaction.response.send_message(f"🎓 **{spieler.mention}** hat erfolgreich **{vergebene_striche} Strich(e)** erhalten!")
+        elif letzter_status == "MAX_REACHED":
             await interaction.response.send_message(f"⚠️ **{spieler.mention}** hat bereits alle 5 Striche!", ephemeral=True)
-        elif res.startswith("ROLE_NOT_FOUND"):
-            role_name = res.split(":")[1]
+        elif letzter_status.startswith("ROLE_NOT_FOUND"):
+            role_name = letzter_status.split(":")[1]
             await interaction.response.send_message(f"❌ Die Rolle `{role_name}` existiert auf dem Server nicht! Bitte erstelle sie exakt so.", ephemeral=True)
 
     # COMMAND: /uprankrequest
@@ -260,7 +267,7 @@ def setup_rangsystem(bot):
                 f"Der Spieler {interaction.user.mention} hat **5 Striche** und fordert einen Uprank an!\n\n"
                 f"📌 **ANLEITUNG FÜR HIGHSTAFF:**\n"
                 f"1. Antworte auf diese Nachricht (Reply).\n"
-                f"2. Pinge/Erwähne die Rolle, die der Spieler erhalten soll (z. B. `@Rolle`).\n"
+                f"2. Pinge/Erwähne die Rolle, die der Spieler erhalten soll (z. B. `@NeuerRang`).\n"
                 f"3. Bestätige im Anschluss die Abfrage mit dem Button!"
             ),
             color=discord.Color.gold()
