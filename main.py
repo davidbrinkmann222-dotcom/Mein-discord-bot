@@ -71,6 +71,7 @@ async def on_ready():
     # Synchronisiert die Slash-Commands (Tree) mit Discord
     try:
         setup_extra_commands(bot)
+        setup_rangsystem(bot)
         synced = await bot.tree.sync()
         print(f"✅ {len(synced)} Slash-Commands erfolgreich mit Discord synchronisiert!")
     except Exception as e:
