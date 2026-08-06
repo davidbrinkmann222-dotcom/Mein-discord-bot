@@ -24,7 +24,8 @@ intents.message_content = True
 intents.members = True
 
 # Der Bot reagiert zeitgleich auf /, ^ und $
-bot = commands.Bot(command_prefix=["/", "^", "$"], intents=intents)
+bot = commands.Bot(command_prefix=["/", "^", "$"], intents=intents, help_command=None)
+
 
 # Ein einfacher Speicher im RAM für Verwarnungen (Achtung: Löscht sich bei Bot-Neustart!)
 verwarnungen_speicher = {}
