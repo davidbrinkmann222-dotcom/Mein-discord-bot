@@ -433,7 +433,7 @@ async def testjoin(ctx):
     else:
         await ctx.send("❌ Du musst in einem Sprachkanal sein!")
 
-@bot.command(name="status")
+@bot.command(name="rpstatus")
 @commands.has_role("♕✯ |❘| David | Founder")
 async def status(ctx, zustand: str):
     # Den Channel suchen (heißt bei dir "🌐║status")
