@@ -5,7 +5,7 @@ import datetime
 WARTERAUM_NAME = "Büro-Warteraum"  # Exakter Name deines Sprachkanals
 TEAM_NOTIFICATION_KANAL = "team-notifikation" # Kanal für die Team-Nachricht
 
-# Direkter Link zu "Local Forecast - Elevator" von Kevin MacLeod (Incompetech)
+# Direkter Link zu "Local Forecast - Elevator" von Kevin MacLeod
 WARTERAUM_MUSIK_URL = "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Local%20Forecast%20-%20Elevator.mp3"
 
 
@@ -16,7 +16,6 @@ def play_warteraum_music(vc):
     if not vc.is_connected():
         return
 
-    # FFmpeg-Optionen für stabilen Audio-Stream
     ffmpeg_options = {
         'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
         'options': '-vn'
@@ -25,7 +24,6 @@ def play_warteraum_music(vc):
     def after_playing(error):
         if error:
             print(f"Musik-Fehler im Warteraum: {error}")
-        # Wenn der Bot immer noch im Voice ist, Musik von vorn starten (Loop)
         if vc.is_connected():
             play_warteraum_music(vc)
 
@@ -41,28 +39,31 @@ async def handle_warteraum(member: discord.Member, before: discord.VoiceState, a
     if member.bot:
         return
 
+    # 🔍 DEBUG-TEST: Zeigt in den Logs an, ob das Event überhaupt ankommt
+    print(f"DEBUG: Voice-State Update für {member.name} | Vorher: {before.channel} | Nachher: {after.channel}")
+
     # 1. USER BETRITT DEN BÜRO-WARTERAUM
     if after.channel and after.channel.name == WARTERAUM_NAME:
+        print(f"DEBUG: {member.name} hat den Büro-Warteraum betreten!")
         guild = member.guild
         voice_channel = after.channel
 
-        # Prüfen, ob der Bot schon im Sprachkanal ist
         vc = discord.utils.get(bot.voice_clients, guild=guild)
 
         if not vc:
             try:
                 vc = await voice_channel.connect()
+                print("DEBUG: Bot hat sich erfolgreich mit dem Voice verbunden!")
             except Exception as e:
-                print(f"Konnte dem Büro-Warteraum nicht beitreten: {e}")
+                print(f"❌ Konnte dem Büro-Warteraum nicht beitreten: {e}")
                 return
         elif vc.channel != voice_channel:
             await vc.move_to(voice_channel)
 
-        # Musik starten, falls sie nicht schon läuft
         if not vc.is_playing():
+            print("DEBUG: Starte Musik...")
             play_warteraum_music(vc)
 
-        # Team per Embed-Nachricht benachrichtigen
         team_kanal = discord.utils.get(guild.text_channels, name=TEAM_NOTIFICATION_KANAL)
         if team_kanal:
             embed = discord.Embed(
@@ -79,11 +80,10 @@ async def handle_warteraum(member: discord.Member, before: discord.VoiceState, a
         voice_channel = before.channel
         guild = member.guild
 
-        # Zählen, wie viele echte User noch im Warteraum sind
         echte_user = [m for m in voice_channel.members if not m.bot]
 
-        # Wenn kein normaler User mehr im Raum ist -> Bot verlässt den Channel & stoppt Musik
         if len(echte_user) == 0:
             vc = discord.utils.get(bot.voice_clients, guild=guild)
             if vc:
+                print("DEBUG: Niemand mehr im Warteraum. Bot verlässt den Channel.")
                 await vc.disconnect()
