@@ -3,3 +3,4 @@ flask
 discord.py
 yt-dlp
 davey
+openai
