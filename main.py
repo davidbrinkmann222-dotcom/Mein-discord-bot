@@ -208,16 +208,7 @@ async def strike(ctx, target: discord.Member = None, *, grund: str = "Fehlverhal
     embed.add_field(name="📝 Begründung", value=grund, inline=False)
     embed.add_field(name="✍️ Unterschrift", value=ctx.author.mention, inline=False)
     await ctx.send(embed=embed)
-
-# ==================== SUSPENDIEREN ====================
-@bot.command()
-async def suspend(ctx, target: discord.Member = None, *, grund: str = "Dienstvergehen / Untersuchung"):
-    if not hat_rolle_aus_liste(ctx.author, ERLAUBTE_STAFF_ROLLEN) and ctx.author != ctx.guild.owner:
-        return
-    if not target:
-        await ctx.send(f"❌ Nutzen: {ctx.prefix}suspend @Spieler [Grund]")
-        return
-        
+     
 # ==================== SUSPENDIEREN ====================
 @bot.command()
 async def suspend(ctx, target: discord.Member = None, *, grund: str = "Dienstvergehen / Untersuchung"):
