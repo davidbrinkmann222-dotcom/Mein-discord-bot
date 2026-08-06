@@ -3,10 +3,6 @@ import discord
 from discord import app_commands
 from openai import OpenAI
 
-# OpenAI Client mit dem Render-Key initialisieren
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
-# Speichert die IDs der freigeschalteten Spieler
 aktive_ki_chats = set()
 
 def setup_ki_commands(bot):
@@ -51,6 +47,9 @@ def setup_ki_commands(bot):
                 
                 async with message.channel.typing():
                     try:
+                        # Client wird erst hier erstellt, wenn der Key sicher geladen ist
+                        client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+                        
                         response = client.chat.completions.create(
                             model="gpt-4o-mini",
                             messages=[
