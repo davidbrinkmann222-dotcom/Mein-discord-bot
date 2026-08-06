@@ -5,6 +5,8 @@ import asyncio
 import os
 from flask import Flask
 from threading import Thread
+
+# Importiere deine Module
 from extra import setup_extra_commands
 from rangsystem import setup_rangsystem
 from warteraum import handle_warteraum
@@ -17,7 +19,6 @@ def home():
     return "Bot läuft!"
 
 def run():
-    # Holt sich den Port dynamisch von Render (Fallback: 10000)
     port = int(os.environ.get("PORT", 10000))
     app.run(host='0.0.0.0', port=port)
 
@@ -25,9 +26,11 @@ def keep_alive():
     t = Thread(target=run)
     t.start()
 
+# WICHTIG: Hier sind jetzt alle Intents (auch voice_states für den Warteraum) aktiv!
 intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
+intents.voice_states = True  # Zwingend notwendig für den Warteraum!
 
 bot = commands.Bot(command_prefix=["/", "^", "$"], intents=intents, help_command=None)
 
@@ -69,7 +72,6 @@ async def on_ready():
     print(f"Erfolgreich eingeloggt als {bot.user.name}")
     await bot.change_presence(activity=discord.Game(name="SYSTEM X EH RP • Online"))
     
-    # Synchronisiert die Slash-Commands (Tree) mit Discord
     try:
         setup_extra_commands(bot)
         setup_rangsystem(bot)
@@ -77,6 +79,13 @@ async def on_ready():
         print(f"✅ {len(synced)} Slash-Commands erfolgreich mit Discord synchronisiert!")
     except Exception as e:
         print(f"❌ Fehler beim Synchronisieren der Slash-Commands: {e}")
+
+# ==================== WARTERAUM EVENT ====================
+@bot.event
+async def on_voice_state_update(member, before, after):
+    # Leitet den Voice-Wechsel direkt an deine warteraum.py weiter
+    await handle_warteraum(member, before, after, bot)
+
 
 # ==================== HELPER LOGIKEN ====================
 async def do_uprank(author, guild, target, neue_rolle, grund):
@@ -86,7 +95,6 @@ async def do_uprank(author, guild, target, neue_rolle, grund):
         return False, "❌ **System-Schutz:** Die Führungsebene kann nicht bearbeitet werden!"
     if author.top_role <= target.top_role and author != guild.owner:
         return False, "❌ **Fehler:** Dein Rang ist zu niedrig!"
-
     alte_rolle = target.top_role
     try:
         await target.add_roles(neue_rolle)
@@ -215,7 +223,7 @@ async def do_suspend(author, guild, target, grund):
         return False, "❌ **Fehler:** Keine Berechtigung!"
     if hat_rolle_aus_liste(target, PROJEKTLEITUNG_ROLLEN):
         return False, "❌ Führungsebene kann nicht suspendiert werden!"
-        
+       
     try:
         suspend_rolle = discord.utils.get(guild.roles, name=SUSPEND_ROLLE_NAME)
         if not suspend_rolle:
@@ -248,7 +256,7 @@ async def do_suspend(author, guild, target, grund):
 async def do_unsuspend(author, guild, target, alte_rolle):
     if not hat_rolle_aus_liste(author, ERLAUBTE_STAFF_ROLLEN) and author != guild.owner:
         return False, "❌ **Fehler:** Keine Berechtigung!"
-        
+      
     try:
         suspend_rolle = discord.utils.get(guild.roles, name=SUSPEND_ROLLE_NAME)
         if suspend_rolle and suspend_rolle in target.roles:
@@ -351,7 +359,6 @@ async def clearwarns_slash(interaction: discord.Interaction, target: discord.Mem
     if not hat_rolle_aus_liste(interaction.user, ERLAUBTE_STAFF_ROLLEN) and interaction.user != interaction.guild.owner:
         await interaction.response.send_message("❌ **Fehler:** Keine Berechtigung!", ephemeral=True)
         return
-    
     verwarnungen_speicher[target.id] = 0
     await interaction.response.send_message(f"✅ Alle Verwarnungen für {target.mention} wurden gelöscht.")
 
@@ -469,9 +476,7 @@ async def help_command(ctx):
 if __name__ == "__main__":
     token = os.environ.get('DISCORD_TOKEN')
     if token:
-        # Starte erst den Webserver für Render/UptimeRobot...
         keep_alive()
-        # ... und starte DANACH den Discord-Bot!
         bot.run(token)
     else:
         print("❌ FEHLER: Kein DISCORD_TOKEN in den Environment Variables gefunden!")
