@@ -419,6 +419,20 @@ async def ping(ctx):
 async def hallo(ctx):
     await ctx.send(f"Hallo {ctx.author.mention}! Schön dich zu sehen.")
 
+@bot.command(name="testjoin")
+async def testjoin(ctx):
+    if ctx.author.voice:
+        channel = ctx.author.voice.channel
+        try:
+            vc = await channel.connect()
+            await ctx.send(f"✅ Konnte mich erfolgreich mit {channel.name} verbinden!")
+            await asyncio.sleep(5)
+            await vc.disconnect()
+        except Exception as e:
+            await ctx.send(f"❌ Fehler beim Verbinden: {e}")
+    else:
+        await ctx.send("❌ Du musst in einem Sprachkanal sein!")
+
 @bot.command(name="status")
 async def status_prefix(ctx):
     embed = discord.Embed(
