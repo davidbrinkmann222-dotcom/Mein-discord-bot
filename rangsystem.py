@@ -27,7 +27,7 @@ REQUEST_KANAL_NAME = "uprank-requests"
 # ==================== BESTÄTIGUNGS-BUTTONS (SICHERHEITSABFRAGE) ====================
 class ConfirmUprankView(discord.ui.View):
     def __init__(self, target_user: discord.Member, selected_role: discord.Role, original_message: discord.Message):
-        super().__init__(timeout=60) # 60 Sekunden Zeit zum Bestätigen
+        super().__init__(timeout=60)
         self.target_user = target_user
         self.selected_role = selected_role
         self.original_message = original_message
@@ -212,25 +212,27 @@ def setup_rangsystem(bot):
                             user_stats["count"] += 1
                             tages_vc_striche[user_id] = user_stats
 
-    # COMMAND: /givestrike MIT VARIABLE ANZAHL
+    # COMMAND: /givestrike (MIT DEFER FIX)
     @bot.tree.command(name="givestrike", description="Vergibt manuell Striche an einen Spieler")
     @app_commands.describe(
         spieler="Der Spieler, der die Striche erhält",
         anzahl="Anzahl der Striche (Standard ist 1)"
     )
     async def givestrike(interaction: discord.Interaction, spieler: discord.Member, anzahl: int = 1):
+        # Discord sagen, dass der Bot nachdenkt (verhindert "Anwendung reagiert nicht")
+        await interaction.response.defer()
+
         if not any(r.name in HIGHSTAFF_ROLLEN for r in interaction.user.roles):
-            await interaction.response.send_message("❌ Du hast keine Berechtigung dafür!", ephemeral=True)
+            await interaction.followup.send("❌ Du hast keine Berechtigung dafür!", ephemeral=True)
             return
 
         if anzahl <= 0:
-            await interaction.response.send_message("⚠️ Die Anzahl muss mindestens 1 sein!", ephemeral=True)
+            await interaction.followup.send("⚠️ Die Anzahl muss mindestens 1 sein!", ephemeral=True)
             return
 
         vergebene_striche = 0
         letzter_status = ""
 
-        # Vergabe-Schleife für die gewünschte Anzahl an Strichen
         for _ in range(anzahl):
             res = await add_strike(spieler)
             letzter_status = res
@@ -240,12 +242,12 @@ def setup_rangsystem(bot):
                 break
 
         if vergebene_striche > 0:
-            await interaction.response.send_message(f"🎓 **{spieler.mention}** hat erfolgreich **{vergebene_striche} Strich(e)** erhalten!")
+            await interaction.followup.send(f"🎓 **{spieler.mention}** hat erfolgreich **{vergebene_striche} Strich(e)** erhalten!")
         elif letzter_status == "MAX_REACHED":
-            await interaction.response.send_message(f"⚠️ **{spieler.mention}** hat bereits alle 5 Striche!", ephemeral=True)
+            await interaction.followup.send(f"⚠️ **{spieler.mention}** hat bereits alle 5 Striche!", ephemeral=True)
         elif letzter_status.startswith("ROLE_NOT_FOUND"):
             role_name = letzter_status.split(":")[1]
-            await interaction.response.send_message(f"❌ Die Rolle `{role_name}` existiert auf dem Server nicht! Bitte erstelle sie exakt so.", ephemeral=True)
+            await interaction.followup.send(f"❌ Die Rolle `{role_name}` existiert auf dem Server nicht! Bitte erstelle sie exakt so.", ephemeral=True)
 
     # COMMAND: /uprankrequest
     @bot.tree.command(name="uprankrequest", description="Fordere einen Uprank an")
