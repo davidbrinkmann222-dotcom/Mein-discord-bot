@@ -37,7 +37,6 @@ class UprankRequestView(discord.ui.View):
             await interaction.response.send_message("❌ Nur das Highstaff-Team kann Anfragen bearbeiten!", ephemeral=True)
             return
 
-        # Alle Strich-Rollen beim User entfernen
         for r_name in STRICH_ROLLEN:
             rolle = discord.utils.get(interaction.guild.roles, name=r_name)
             if rolle and rolle in self.target_user.roles:
@@ -75,36 +74,40 @@ class UprankRequestView(discord.ui.View):
 # ==================== MAIN SETUP ====================
 def setup_rangsystem(bot):
 
-    # Hilfsfunktion: Vergibt sauber den nächsten Strich
     async def vergebe_naechsten_strich(member: discord.Member, anzahl: int = 1):
-        # 1. Aktuelle Strich-Anzahl ermitteln
+        user_rollen = [r.name for r in member.roles]
+        print(f"[DEBUG] User {member.name} hat folgende Rollen auf Discord: {user_rollen}")
+
         aktuelle_striche = 0
         for i, r_name in enumerate(STRICH_ROLLEN, start=1):
-            if any(r.name == r_name for r in member.roles):
+            if r_name in user_rollen:
                 aktuelle_striche = i
 
-        # Wenn bereits 5 Striche vorhanden sind
+        print(f"[DEBUG] Errechnete aktuelle Striche: {aktuelle_striche}")
+
         if aktuelle_striche >= 5:
+            print("[DEBUG] Abbruch: User hat laut System bereits 5 Striche.")
             return False
 
-        # Neue Anzahl berechnen (max. 5)
         neue_anzahl = min(aktuelle_striche + anzahl, 5)
 
-        # 2. Alte Strich-Rollen vorsichtshalber entfernen
+        # Alte Strich-Rollen entfernen
         for r_name in STRICH_ROLLEN:
             alte_rolle = discord.utils.get(member.guild.roles, name=r_name)
             if alte_rolle and alte_rolle in member.roles:
                 await member.remove_roles(alte_rolle)
 
-        # 3. Neue Strich-Rolle vergeben
+        # Neue Strich-Rolle vergeben
         ziel_rollen_name = STRICH_ROLLEN[neue_anzahl - 1]
         neue_rolle = discord.utils.get(member.guild.roles, name=ziel_rollen_name)
         
         if neue_rolle:
             await member.add_roles(neue_rolle)
+            print(f"[DEBUG] Erfolg: Rolle '{ziel_rollen_name}' wurde an {member.name} vergeben!")
             return True
-            
-        return False
+        else:
+            print(f"[DEBUG] FEHLER: Rolle '{ziel_rollen_name}' wurde auf dem Server NICHT gefunden!")
+            return False
 
     @bot.event
     async def on_voice_state_update(member, before, after):
@@ -154,7 +157,7 @@ def setup_rangsystem(bot):
         hat_strich_5 = any(r.name == STRICH_ROLLEN[4] for r in interaction.user.roles)
         
         if not hat_strich_5:
-            await interaction.response.send_message("❌ Du benötigst **5 Striche**, um einen Uprank anzufordern!", ephemeral=True)
+            await interaction.response.send_message("❌ Du benötigst **5 Striche**, um einen Uprank angefordert zu bekommen!", ephemeral=True)
             return
 
         request_kanal = discord.utils.get(interaction.guild.text_channels, name=REQUEST_KANAL_NAME)
