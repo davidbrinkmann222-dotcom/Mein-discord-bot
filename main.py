@@ -7,6 +7,7 @@ from flask import Flask
 from threading import Thread
 from extra import setup_extra_commands
 from rangsystem import setup_rangsystem
+from warteraum import handle_warteraum
 
 # Kleiner Webserver für Render
 app = Flask('')
