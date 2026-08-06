@@ -36,7 +36,6 @@ class UprankRequestView(discord.ui.View):
             await interaction.response.send_message("❌ Nur das Highstaff-Team kann Anfragen bearbeiten!", ephemeral=True)
             return
 
-        # Striche vom Ziel-User entfernen
         for r_name in STRICH_ROLLEN:
             rolle = discord.utils.get(interaction.guild.roles, name=r_name)
             if rolle and rolle in self.target_user.roles:
@@ -74,7 +73,7 @@ class UprankRequestView(discord.ui.View):
 # ==================== MAIN SETUP ====================
 def setup_rangsystem(bot):
 
-    # Hilfsfunktion: Strich vergeben (Sucht nach der konkreten Stufe)
+    # Hilfsfunktion: Strich vergeben
     async def add_strike(member: discord.Member) -> str:
         current_level = 0
         for index, role_name in enumerate(STRICH_ROLLEN, start=1):
@@ -100,7 +99,6 @@ def setup_rangsystem(bot):
         # Neue Rolle vergeben
         await member.add_roles(next_role)
         return "SUCCESS"
-
 
     # VOICE STATE UPDATE
     @bot.event
@@ -133,7 +131,6 @@ def setup_rangsystem(bot):
                             user_stats["count"] += 1
                             tages_vc_striche[user_id] = user_stats
 
-
     # COMMAND: /givestrike
     @bot.tree.command(name="givestrike", description="Vergibt manuell einen Strich")
     @app_commands.describe(spieler="Der Spieler, der den Strich erhält")
@@ -152,6 +149,27 @@ def setup_rangsystem(bot):
             role_name = res.split(":")[1]
             await interaction.response.send_message(f"❌ Die Rolle `{role_name}` existiert auf dem Server nicht! Bitte erstelle sie exakt so.", ephemeral=True)
 
-
     # COMMAND: /uprankrequest
-    @bot.tree.command
+    @bot.tree.command(name="uprankrequest", description="Fordere einen Uprank an")
+    async def uprankrequest(interaction: discord.Interaction):
+        hat_strich_5 = any(r.name == STRICH_ROLLEN[4] for r in interaction.user.roles)
+
+        if not hat_strich_5:
+            await interaction.response.send_message("❌ Du benötigst **5 Striche**, um einen Uprank anzufordern!", ephemeral=True)
+            return
+
+        request_kanal = discord.utils.get(interaction.guild.text_channels, name=REQUEST_KANAL_NAME)
+        if not request_kanal:
+            await interaction.response.send_message(f"❌ Kanal `{REQUEST_KANAL_NAME}` nicht gefunden!", ephemeral=True)
+            return
+
+        embed = discord.Embed(
+            title="📩 NEUER UPRANK-ANTRAG",
+            description=f"Der Spieler {interaction.user.mention} hat **5 Striche** und fordert einen Uprank an!",
+            color=discord.Color.gold()
+        )
+        embed.add_field(name="Spieler", value=f"{interaction.user.name} (`{interaction.user.id}`)", inline=True)
+        embed.set_thumbnail(url=interaction.user.display_avatar.url)
+
+        await request_kanal.send(embed=embed, view=UprankRequestView(target_user=interaction.user))
+        await interaction.response.send_message("✅ Uprank-Antrag übermittelt!", ephemeral=True)
