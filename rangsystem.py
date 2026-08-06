@@ -2,11 +2,11 @@ import discord
 from discord import app_commands
 import datetime
 
-# Speicher-Mappen
-vc_zeiten = {}          # Speichert Beitrittszeit: {user_id: datetime}
-tages_vc_striche = {}   # Speichert VC-Striche pro Tag: {user_id: {"date": date, "count": int}}
+# Speicher für Voice-Zeiten
+vc_zeiten = {}
+tages_vc_striche = {}
 
-# ==================== CONFIG: ROLLEN-NAMEN ====================
+# ==================== CONFIGURATION ====================
 STRICH_ROLLEN = [
     "│ Strich 1",
     "│ Strich 2",
@@ -15,7 +15,6 @@ STRICH_ROLLEN = [
     "│ Strich 5"
 ]
 
-# Deine 3 Highstaff-Rollen
 HIGHSTAFF_ROLLEN = [
     "┗⎯⎯⎯|🔴|HIGHTEAM|🔴|⎯⎯⎯┑",
     "┗⎯⎯⎯|▪️|PROJEKT LEAD|▪️|⎯⎯⎯┓",
@@ -25,7 +24,7 @@ HIGHSTAFF_ROLLEN = [
 REQUEST_KANAL_NAME = "uprank-requests"
 
 
-# ==================== 📩 UPRANK REQUEST BUTTONS ====================
+# ==================== UPRANK BUTTONS ====================
 class UprankRequestView(discord.ui.View):
     def __init__(self, target_user: discord.Member):
         super().__init__(timeout=None)
@@ -37,10 +36,13 @@ class UprankRequestView(discord.ui.View):
             await interaction.response.send_message("❌ Nur das Highstaff-Team kann Anfragen bearbeiten!", ephemeral=True)
             return
 
+        # Striche vom Ziel-User entfernen
+        removed_any = False
         for r_name in STRICH_ROLLEN:
             rolle = discord.utils.get(interaction.guild.roles, name=r_name)
             if rolle and rolle in self.target_user.roles:
                 await self.target_user.remove_roles(rolle)
+                removed_any = True
 
         for child in self.children:
             child.disabled = True
@@ -51,7 +53,7 @@ class UprankRequestView(discord.ui.View):
         embed.add_field(name="Bearbeitet von", value=interaction.user.mention, inline=False)
         
         await interaction.message.edit(embed=embed, view=self)
-        await interaction.response.send_message(f"🎉 Der Uprank für {self.target_user.mention} wurde genehmigt! Die Striche wurden zurückgesetzt.")
+        await interaction.response.send_message(f"🎉 Der Uprank für {self.target_user.mention} wurde genehmigt! Striche wurden zurückgesetzt.")
 
     @discord.ui.button(label="❌ Ablehnen", style=discord.ButtonStyle.red, custom_id="uprank_deny")
     async def deny(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -74,41 +76,35 @@ class UprankRequestView(discord.ui.View):
 # ==================== MAIN SETUP ====================
 def setup_rangsystem(bot):
 
-    async def vergebe_naechsten_strich(member: discord.Member, anzahl: int = 1):
-        user_rollen = [r.name for r in member.roles]
-        print(f"[DEBUG] User {member.name} hat folgende Rollen auf Discord: {user_rollen}")
+    # Hilfsfunktion: Strich vergeben
+    async def add_strike(member: discord.Member) -> str:
+        # Welche Strich-Rollen hat der User aktuell?
+        current_striche = [r.name for r in member.roles if r.name in STRICH_ROLLEN]
+        
+        if len(current_striche) >= 5:
+            return "MAX_REACHED"
 
-        aktuelle_striche = 0
-        for i, r_name in enumerate(STRICH_ROLLEN, start=1):
-            if r_name in user_rollen:
-                aktuelle_striche = i
+        # Bestimmen, welcher Strich als nächstes kommt
+        next_index = len(current_striche) # 0 = Strich 1, 1 = Strich 2 ...
+        next_role_name = STRICH_ROLLEN[next_index]
 
-        print(f"[DEBUG] Errechnete aktuelle Striche: {aktuelle_striche}")
-
-        if aktuelle_striche >= 5:
-            print("[DEBUG] Abbruch: User hat laut System bereits 5 Striche.")
-            return False
-
-        neue_anzahl = min(aktuelle_striche + anzahl, 5)
+        # Rolle auf Discord suchen
+        next_role = discord.utils.get(member.guild.roles, name=next_role_name)
+        if not next_role:
+            return f"ROLE_NOT_FOUND:{next_role_name}"
 
         # Alte Strich-Rollen entfernen
         for r_name in STRICH_ROLLEN:
-            alte_rolle = discord.utils.get(member.guild.roles, name=r_name)
-            if alte_rolle and alte_rolle in member.roles:
-                await member.remove_roles(alte_rolle)
+            old_role = discord.utils.get(member.guild.roles, name=r_name)
+            if old_role and old_role in member.roles:
+                await member.remove_roles(old_role)
 
-        # Neue Strich-Rolle vergeben
-        ziel_rollen_name = STRICH_ROLLEN[neue_anzahl - 1]
-        neue_rolle = discord.utils.get(member.guild.roles, name=ziel_rollen_name)
-        
-        if neue_rolle:
-            await member.add_roles(neue_rolle)
-            print(f"[DEBUG] Erfolg: Rolle '{ziel_rollen_name}' wurde an {member.name} vergeben!")
-            return True
-        else:
-            print(f"[DEBUG] FEHLER: Rolle '{ziel_rollen_name}' wurde auf dem Server NICHT gefunden!")
-            return False
+        # Neue Rolle vergeben
+        await member.add_roles(next_role)
+        return "SUCCESS"
 
+
+    # VOICE STATE UPDATE
     @bot.event
     async def on_voice_state_update(member, before, after):
         if member.bot:
@@ -124,54 +120,62 @@ def setup_rangsystem(bot):
             if user_id in vc_zeiten:
                 start_zeit = vc_zeiten.pop(user_id)
                 dauer = datetime.datetime.now() - start_zeit
-                stunden_im_vc = int(dauer.total_seconds() // 3600)
+                stunden = int(dauer.total_seconds() // 3600)
 
-                if stunden_im_vc >= 1:
+                if stunden >= 1:
                     user_stats = tages_vc_striche.get(user_id, {"date": heute, "count": 0})
                     if user_stats["date"] != heute:
                         user_stats = {"date": heute, "count": 0}
 
-                    verfuegbare_vc_striche = min(stunden_im_vc, 2 - user_stats["count"])
+                    mögliche_striche = min(stunden, 2 - user_stats["count"])
 
-                    if verfuegbare_vc_striche > 0:
-                        erfolg = await vergebe_naechsten_strich(member, verfuegbare_vc_striche)
-                        if erfolg:
-                            user_stats["count"] += verfuegbare_vc_striche
+                    for _ in range(mögliche_striche):
+                        res = await add_strike(member)
+                        if res == "SUCCESS":
+                            user_stats["count"] += 1
                             tages_vc_striche[user_id] = user_stats
 
-    @bot.tree.command(name="givestrike", description="Vergibt manuell einen Strich (z.B. nach mündlicher Prüfung)")
+
+    # COMMAND: /givestrike
+    @bot.tree.command(name="givestrike", description="Vergibt manuell einen Strich")
     @app_commands.describe(spieler="Der Spieler, der den Strich erhält")
     async def givestrike(interaction: discord.Interaction, spieler: discord.Member):
         if not any(r.name in HIGHSTAFF_ROLLEN for r in interaction.user.roles):
-            await interaction.response.send_message("❌ Nur Mitglieder des Highstaffs dürfen Striche vergeben!", ephemeral=True)
+            await interaction.response.send_message("❌ Du hast keine Berechtigung dafür!", ephemeral=True)
             return
 
-        erfolg = await vergebe_naechsten_strich(spieler, 1)
-        if erfolg:
-            await interaction.response.send_message(f"🎓 {interaction.user.mention} hat **{spieler.mention}** erfolgreich einen Strich vergeben!")
-        else:
-            await interaction.response.send_message(f"⚠️ {spieler.mention} hat bereits alle 5 Striche!", ephemeral=True)
+        res = await add_strike(spieler)
 
-    @bot.tree.command(name="uprankrequest", description="Fordere einen Uprank an, sobald du 5 Striche hast")
+        if res == "SUCCESS":
+            await interaction.response.send_message(f"🎓 **{spieler.mention}** hat erfolgreich einen Strich erhalten!")
+        elif res == "MAX_REACHED":
+            await interaction.response.send_message(f"⚠️ **{spieler.mention}** hat bereits alle 5 Striche!", ephemeral=True)
+        elif res.startswith("ROLE_NOT_FOUND"):
+            role_name = res.split(":")[1]
+            await interaction.response.send_message(f"❌ Die Rolle `{role_name}` existiert auf dem Server nicht! Bitte erstelle sie exakt so.", ephemeral=True)
+
+
+    # COMMAND: /uprankrequest
+    @bot.tree.command(name="uprankrequest", description="Fordere einen Uprank an")
     async def uprankrequest(interaction: discord.Interaction):
-        hat_strich_5 = any(r.name == STRICH_ROLLEN[4] for r in interaction.user.roles)
-        
-        if not hat_strich_5:
-            await interaction.response.send_message("❌ Du benötigst **5 Striche**, um einen Uprank angefordert zu bekommen!", ephemeral=True)
+        current_striche = [r.name for r in interaction.user.roles if r.name in STRICH_ROLLEN]
+
+        if len(current_striche) < 5 and STRICH_ROLLEN[4] not in current_striche:
+            await interaction.response.send_message("❌ Du benötigst **5 Striche**, um einen Uprank anzufordern!", ephemeral=True)
             return
 
         request_kanal = discord.utils.get(interaction.guild.text_channels, name=REQUEST_KANAL_NAME)
         if not request_kanal:
-            await interaction.response.send_message(f"❌ Kanal `{REQUEST_KANAL_NAME}` wurde nicht gefunden! Bitte erstelle ihn.", ephemeral=True)
+            await interaction.response.send_message(f"❌ Kanal `{REQUEST_KANAL_NAME}` nicht gefunden!", ephemeral=True)
             return
 
         embed = discord.Embed(
             title="📩 NEUER UPRANK-ANTRAG",
-            description=f"Der Spieler {interaction.user.mention} hat **5 Striche** gesammelt und fordert einen Uprank an!",
+            description=f"Der Spieler {interaction.user.mention} hat **5 Striche** und fordert einen Uprank an!",
             color=discord.Color.gold()
         )
         embed.add_field(name="Spieler", value=f"{interaction.user.name} (`{interaction.user.id}`)", inline=True)
         embed.set_thumbnail(url=interaction.user.display_avatar.url)
 
         await request_kanal.send(embed=embed, view=UprankRequestView(target_user=interaction.user))
-        await interaction.response.send_message("✅ Dein Uprank-Antrag wurde erfolgreich an das Highstaff-Team übermittelt!", ephemeral=True)
+        await interaction.response.send_message("✅ Uprank-Antrag übermittelt!", ephemeral=True)
