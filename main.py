@@ -2,6 +2,21 @@ import discord
 from discord.ext import commands
 import asyncio
 import os
+from flask import Flask
+from threading import Thread
+
+# Kleiner Webserver für Render, damit der Port aktiv ist
+app = Flask('')
+@app.route('/')
+def home():
+    return "Bot läuft!"
+
+def run():
+    app.run(host='0.0.0.0', port=10000)
+
+def keep_alive():
+    t = Thread(target=run)
+    t.start()
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -28,5 +43,6 @@ async def on_member_join(member):
     if channel is not None:
         await channel.send(f"Willkommen auf dem Server, {member.mention}! 🎉")
 
-# Holt sich das Token sicher aus den Render-Einstellungen
+# Startet den Webserver und danach den Bot
+keep_alive()
 bot.run(os.environ.get('DISCORD_TOKEN'))
