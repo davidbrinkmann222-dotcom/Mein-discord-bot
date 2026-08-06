@@ -6,6 +6,7 @@ import os
 from flask import Flask
 from threading import Thread
 from extra import setup_extra_commands
+from rangsystem import setup_rangsystem
 
 # Kleiner Webserver für Render
 app = Flask('')
