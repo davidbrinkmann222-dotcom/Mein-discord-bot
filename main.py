@@ -31,16 +31,15 @@ verwarnungen_speicher = {}
 
 # ==================== DEINE SERVER CONFIG ====================
 # 1. GANZ HOHE ROLLEN (Absolut geschützt vor Kicks, Downranks, Strikes, Suspendierungen!)
-PROJEKTLEITUNG_ROLLEN = ["Projektleitung", "Inhaber", "Management", "Serverleitung"]
+PROJEKTLEITUNG_ROLLEN = ["⚒︎ || Head behind everything", "♕✯ |❘| David | Founder", "✵ || Mika | Co-Founder"]
 
 # 2. NORMALE SPIELER & VIP (Werden beim Teamkick NIEMALS gelöscht)
 NORMALE_SPIELER_ROLLEN = [
-    "User", "Zivilist", "VIP", "Premium", 
-    "Zusatz-Permission", "@everyone"
+    "🟢 || Verify", "✋ 〣 Member", "-------Others--------", "👮 〣  Polizei", "@everyone"
 ]
 
 # 3. ERLAUBTE STAFF-ROLLEN (Nur wer eine dieser Rollen hat, darf die System-Befehle nutzen!)
-ERLAUBTE_STAFF_ROLLEN = ["Admin", "Moderator", "Supporter", "Teamleitung", "Personalabteilung"]
+ERLAUBTE_STAFF_ROLLEN = ["┗⎯⎯⎯|▪️|PROJEKT LEAD|▪️|⎯⎯⎯┓", "┗⎯⎯⎯|▪️|REAL CREATORS|▪️|⎯⎯⎯┓", "┗⎯⎯⎯|🛑|OWNERS|🛑|⎯⎯⎯┑", "┗⎯⎯⎯|🔴|HIGHTEAM|🔴|⎯⎯⎯┑"]
 
 # 4. DIE SUSPENDIERT-ROLLE (Wird beim Befehl ^suspend vergeben)
 SUSPEND_ROLLE_NAME = "Suspendiert"
