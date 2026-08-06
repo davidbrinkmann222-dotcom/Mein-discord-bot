@@ -2,6 +2,7 @@ import discord
 from discord import app_commands
 import random
 import datetime
+import asyncio 
 
 # Speicher für die RP-Steckbriefe
 steckbriefe = {}
