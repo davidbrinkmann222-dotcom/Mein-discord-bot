@@ -5,6 +5,7 @@ import asyncio
 import os
 from flask import Flask
 from threading import Thread
+from extra import setup_extra_commands
 
 # Kleiner Webserver für Render
 app = Flask('')
@@ -68,6 +69,7 @@ async def on_ready():
     
     # Synchronisiert die Slash-Commands (Tree) mit Discord
     try:
+        setup_extra_commands(bot)
         synced = await bot.tree.sync()
         print(f"✅ {len(synced)} Slash-Commands erfolgreich mit Discord synchronisiert!")
     except Exception as e:
