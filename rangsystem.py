@@ -33,18 +33,16 @@ class UprankRequestView(discord.ui.View):
 
     @discord.ui.button(label="✅ Genehmigen (Uprank)", style=discord.ButtonStyle.green, custom_id="uprank_accept")
     async def accept(self, interaction: discord.Interaction, button: discord.ui.Button):
-        # Prüft, ob der Ausführende eine der 3 Highstaff-Rollen hat
         if not any(r.name in HIGHSTAFF_ROLLEN for r in interaction.user.roles):
             await interaction.response.send_message("❌ Nur das Highstaff-Team kann Anfragen bearbeiten!", ephemeral=True)
             return
 
-        # Striche beim Ziel-User entfernen
+        # Alle Strich-Rollen beim User entfernen
         for r_name in STRICH_ROLLEN:
             rolle = discord.utils.get(interaction.guild.roles, name=r_name)
             if rolle and rolle in self.target_user.roles:
                 await self.target_user.remove_roles(rolle)
 
-        # Buttons deaktivieren
         for child in self.children:
             child.disabled = True
 
@@ -58,12 +56,10 @@ class UprankRequestView(discord.ui.View):
 
     @discord.ui.button(label="❌ Ablehnen", style=discord.ButtonStyle.red, custom_id="uprank_deny")
     async def deny(self, interaction: discord.Interaction, button: discord.ui.Button):
-        # Prüft, ob der Ausführende eine der 3 Highstaff-Rollen hat
         if not any(r.name in HIGHSTAFF_ROLLEN for r in interaction.user.roles):
             await interaction.response.send_message("❌ Nur das Highstaff-Team kann Anfragen bearbeiten!", ephemeral=True)
             return
 
-        # Buttons deaktivieren
         for child in self.children:
             child.disabled = True
 
@@ -79,22 +75,35 @@ class UprankRequestView(discord.ui.View):
 # ==================== MAIN SETUP ====================
 def setup_rangsystem(bot):
 
+    # Hilfsfunktion: Vergibt sauber den nächsten Strich
     async def vergebe_naechsten_strich(member: discord.Member, anzahl: int = 1):
+        # 1. Aktuelle Strich-Anzahl ermitteln
         aktuelle_striche = 0
-        for i, r_name in enumerate(STRICH_ROLLEN):
+        for i, r_name in enumerate(STRICH_ROLLEN, start=1):
             if any(r.name == r_name for r in member.roles):
-                aktuelle_striche = i + 1
+                aktuelle_striche = i
 
-        neue_anzahl = min(aktuelle_striche + anzahl, 5)
-
-        if neue_anzahl == aktuelle_striche:
+        # Wenn bereits 5 Striche vorhanden sind
+        if aktuelle_striche >= 5:
             return False
 
+        # Neue Anzahl berechnen (max. 5)
+        neue_anzahl = min(aktuelle_striche + anzahl, 5)
+
+        # 2. Alte Strich-Rollen vorsichtshalber entfernen
+        for r_name in STRICH_ROLLEN:
+            alte_rolle = discord.utils.get(member.guild.roles, name=r_name)
+            if alte_rolle and alte_rolle in member.roles:
+                await member.remove_roles(alte_rolle)
+
+        # 3. Neue Strich-Rolle vergeben
         ziel_rollen_name = STRICH_ROLLEN[neue_anzahl - 1]
-        rolle = discord.utils.get(member.guild.roles, name=ziel_rollen_name)
-        if rolle:
-            await member.add_roles(rolle)
+        neue_rolle = discord.utils.get(member.guild.roles, name=ziel_rollen_name)
+        
+        if neue_rolle:
+            await member.add_roles(neue_rolle)
             return True
+            
         return False
 
     @bot.event
@@ -130,7 +139,6 @@ def setup_rangsystem(bot):
     @bot.tree.command(name="givestrike", description="Vergibt manuell einen Strich (z.B. nach mündlicher Prüfung)")
     @app_commands.describe(spieler="Der Spieler, der den Strich erhält")
     async def givestrike(interaction: discord.Interaction, spieler: discord.Member):
-        # Berechtigungs-Check für die 3 Highstaff-Rollen
         if not any(r.name in HIGHSTAFF_ROLLEN for r in interaction.user.roles):
             await interaction.response.send_message("❌ Nur Mitglieder des Highstaffs dürfen Striche vergeben!", ephemeral=True)
             return
