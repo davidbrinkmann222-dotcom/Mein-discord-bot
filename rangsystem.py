@@ -2,10 +2,7 @@ import discord
 from discord import app_commands
 import datetime
 
-# Importiert die Warteraum-Logik aus deiner neuen warteraum.py
-from warteraum import handle_warteraum
-
-# Speicher für Voice-Zeiten (Rangsystem)
+# Speicher für Voice-Zeiten (falls benötigt)
 vc_zeiten = {}
 tages_vc_striche = {}
 
@@ -41,16 +38,13 @@ class ConfirmUprankView(discord.ui.View):
             await interaction.response.send_message("❌ Nur das Highstaff-Team kann Anfragen bearbeiten!", ephemeral=True)
             return
 
-        # 1. Strich-Rollen beim Spieler entfernen
         for r_name in STRICH_ROLLEN:
             rolle = discord.utils.get(interaction.guild.roles, name=r_name)
             if rolle and rolle in self.target_user.roles:
                 await self.target_user.remove_roles(rolle)
 
-        # 2. Neue Rang-Rolle vergeben
         await self.target_user.add_roles(self.selected_role)
 
-        # 3. Originale Antrag-Nachricht aktualisieren & deaktivieren
         embed = self.original_message.embeds[0]
         embed.color = discord.Color.green()
         embed.title = "✅ UPRANK GENEHMIGT"
@@ -59,7 +53,6 @@ class ConfirmUprankView(discord.ui.View):
 
         await self.original_message.edit(embed=embed, view=None)
 
-        # 4. Bestätigungsnachricht anpassen
         for child in self.children:
             child.disabled = True
         
@@ -107,7 +100,6 @@ class UprankRequestView(discord.ui.View):
 # ==================== MAIN SETUP ====================
 def setup_rangsystem(bot):
 
-    # Hilfsfunktion: Strich vergeben
     async def add_strike(member: discord.Member) -> str:
         current_level = 0
         for index, role_name in enumerate(STRICH_ROLLEN, start=1):
@@ -124,17 +116,14 @@ def setup_rangsystem(bot):
         if not next_role:
             return f"ROLE_NOT_FOUND:{next_role_name}"
 
-        # Alte Strich-Rollen entfernen
         for r_name in STRICH_ROLLEN:
             old_role = discord.utils.get(member.guild.roles, name=r_name)
             if old_role and old_role in member.roles:
                 await member.remove_roles(old_role)
 
-        # Neue Rolle vergeben
         await member.add_roles(next_role)
         return "SUCCESS"
 
-    # EVENT: REAKTION AUF ANTWORT-NACHRICHTEN (UPRANK SYSTEM)
     @bot.event
     async def on_message(message: discord.Message):
         if message.author.bot:
@@ -156,7 +145,6 @@ def setup_rangsystem(bot):
                     return
 
                 selected_role = message.role_mentions[0]
-
                 embed = referenced_msg.embeds[0]
                 target_user = None
                 
@@ -184,42 +172,6 @@ def setup_rangsystem(bot):
 
         await bot.process_commands(message)
 
-    # VOICE STATE UPDATE (WARTERAUM + STRICH-SYSTEM)
-    @bot.event
-    async def on_voice_state_update(member, before, after):
-        if member.bot:
-            return
-
-        # 1. WARTERAUM CHECK
-        await handle_warteraum(member, before, after, bot)
-
-        # 2. VOICE-ZEITEN FÜR STRICHE BERECHNEN
-        heute = datetime.date.today()
-        user_id = member.id
-
-        if before.channel is None and after.channel is not None:
-            vc_zeiten[user_id] = datetime.datetime.now()
-
-        elif before.channel is not None and after.channel is None:
-            if user_id in vc_zeiten:
-                start_zeit = vc_zeiten.pop(user_id)
-                dauer = datetime.datetime.now() - start_zeit
-                stunden = int(dauer.total_seconds() // 3600)
-
-                if stunden >= 1:
-                    user_stats = tages_vc_striche.get(user_id, {"date": heute, "count": 0})
-                    if user_stats["date"] != heute:
-                        user_stats = {"date": heute, "count": 0}
-
-                    mögliche_striche = min(stunden, 2 - user_stats["count"])
-
-                    for _ in range(mögliche_striche):
-                        res = await add_strike(member)
-                        if res == "SUCCESS":
-                            user_stats["count"] += 1
-                            tages_vc_striche[user_id] = user_stats
-
-    # COMMAND: /givestrike
     @bot.tree.command(name="givestrike", description="Vergibt manuell Striche an einen Spieler")
     @app_commands.describe(
         spieler="Der Spieler, der die Striche erhält",
@@ -255,7 +207,6 @@ def setup_rangsystem(bot):
             role_name = letzter_status.split(":")[1]
             await interaction.followup.send(f"❌ Die Rolle `{role_name}` existiert auf dem Server nicht! Bitte erstelle sie exakt so.", ephemeral=True)
 
-    # COMMAND: /uprankrequest
     @bot.tree.command(name="uprankrequest", description="Fordere einen Uprank an")
     async def uprankrequest(interaction: discord.Interaction):
         hat_strich_5 = any(r.name == STRICH_ROLLEN[4] for r in interaction.user.roles)
