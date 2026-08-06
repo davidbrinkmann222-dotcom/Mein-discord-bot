@@ -2,7 +2,10 @@ import discord
 from discord import app_commands
 import datetime
 
-# Speicher für Voice-Zeiten
+# Importiert die Warteraum-Logik aus deiner neuen warteraum.py
+from warteraum import handle_warteraum
+
+# Speicher für Voice-Zeiten (Rangsystem)
 vc_zeiten = {}
 tages_vc_striche = {}
 
@@ -104,7 +107,7 @@ class UprankRequestView(discord.ui.View):
 # ==================== MAIN SETUP ====================
 def setup_rangsystem(bot):
 
-    # Hilfsfunktion: Einzeiligen Strich vergeben
+    # Hilfsfunktion: Strich vergeben
     async def add_strike(member: discord.Member) -> str:
         current_level = 0
         for index, role_name in enumerate(STRICH_ROLLEN, start=1):
@@ -131,7 +134,7 @@ def setup_rangsystem(bot):
         await member.add_roles(next_role)
         return "SUCCESS"
 
-    # EVENT: REAKTION AUF ANTWORT-NACHRICHTEN
+    # EVENT: REAKTION AUF ANTWORT-NACHRICHTEN (UPRANK SYSTEM)
     @bot.event
     async def on_message(message: discord.Message):
         if message.author.bot:
@@ -181,12 +184,16 @@ def setup_rangsystem(bot):
 
         await bot.process_commands(message)
 
-    # VOICE STATE UPDATE
+    # VOICE STATE UPDATE (WARTERAUM + STRICH-SYSTEM)
     @bot.event
     async def on_voice_state_update(member, before, after):
         if member.bot:
             return
 
+        # 1. WARTERAUM CHECK
+        await handle_warteraum(member, before, after, bot)
+
+        # 2. VOICE-ZEITEN FÜR STRICHE BERECHNEN
         heute = datetime.date.today()
         user_id = member.id
 
@@ -212,14 +219,13 @@ def setup_rangsystem(bot):
                             user_stats["count"] += 1
                             tages_vc_striche[user_id] = user_stats
 
-    # COMMAND: /givestrike (MIT DEFER FIX)
+    # COMMAND: /givestrike
     @bot.tree.command(name="givestrike", description="Vergibt manuell Striche an einen Spieler")
     @app_commands.describe(
         spieler="Der Spieler, der die Striche erhält",
         anzahl="Anzahl der Striche (Standard ist 1)"
     )
     async def givestrike(interaction: discord.Interaction, spieler: discord.Member, anzahl: int = 1):
-        # Discord sagen, dass der Bot nachdenkt (verhindert "Anwendung reagiert nicht")
         await interaction.response.defer()
 
         if not any(r.name in HIGHSTAFF_ROLLEN for r in interaction.user.roles):
