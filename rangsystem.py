@@ -15,7 +15,13 @@ STRICH_ROLLEN = [
     "│ Strich 5"
 ]
 
-HIGHSTAFF_ROLLE = "Highstaff"
+# Deine 3 Highstaff-Rollen
+HIGHSTAFF_ROLLEN = [
+    "┗⎯⎯⎯|🔴|HIGHTEAM|🔴|⎯⎯⎯┑",
+    "┗⎯⎯⎯|▪️|PROJEKT LEAD|▪️|⎯⎯⎯┓",
+    "┗⎯⎯⎯|▪️|REAL CREATORS|▪️|⎯⎯⎯┓"
+]
+
 REQUEST_KANAL_NAME = "uprank-requests"
 
 
@@ -27,15 +33,18 @@ class UprankRequestView(discord.ui.View):
 
     @discord.ui.button(label="✅ Genehmigen (Uprank)", style=discord.ButtonStyle.green, custom_id="uprank_accept")
     async def accept(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if not any(r.name == HIGHSTAFF_ROLLE for r in interaction.user.roles):
+        # Prüft, ob der Ausführende eine der 3 Highstaff-Rollen hat
+        if not any(r.name in HIGHSTAFF_ROLLEN for r in interaction.user.roles):
             await interaction.response.send_message("❌ Nur das Highstaff-Team kann Anfragen bearbeiten!", ephemeral=True)
             return
 
+        # Striche beim Ziel-User entfernen
         for r_name in STRICH_ROLLEN:
             rolle = discord.utils.get(interaction.guild.roles, name=r_name)
             if rolle and rolle in self.target_user.roles:
                 await self.target_user.remove_roles(rolle)
 
+        # Buttons deaktivieren
         for child in self.children:
             child.disabled = True
 
@@ -49,10 +58,12 @@ class UprankRequestView(discord.ui.View):
 
     @discord.ui.button(label="❌ Ablehnen", style=discord.ButtonStyle.red, custom_id="uprank_deny")
     async def deny(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if not any(r.name == HIGHSTAFF_ROLLE for r in interaction.user.roles):
+        # Prüft, ob der Ausführende eine der 3 Highstaff-Rollen hat
+        if not any(r.name in HIGHSTAFF_ROLLEN for r in interaction.user.roles):
             await interaction.response.send_message("❌ Nur das Highstaff-Team kann Anfragen bearbeiten!", ephemeral=True)
             return
 
+        # Buttons deaktivieren
         for child in self.children:
             child.disabled = True
 
@@ -119,7 +130,8 @@ def setup_rangsystem(bot):
     @bot.tree.command(name="givestrike", description="Vergibt manuell einen Strich (z.B. nach mündlicher Prüfung)")
     @app_commands.describe(spieler="Der Spieler, der den Strich erhält")
     async def givestrike(interaction: discord.Interaction, spieler: discord.Member):
-        if not any(r.name == HIGHSTAFF_ROLLE for r in interaction.user.roles):
+        # Berechtigungs-Check für die 3 Highstaff-Rollen
+        if not any(r.name in HIGHSTAFF_ROLLEN for r in interaction.user.roles):
             await interaction.response.send_message("❌ Nur Mitglieder des Highstaffs dürfen Striche vergeben!", ephemeral=True)
             return
 
