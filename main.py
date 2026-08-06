@@ -14,7 +14,9 @@ def home():
     return "Bot läuft!"
 
 def run():
-    app.run(host='0.0.0.0', port=10000)
+    # Holt sich den Port dynamisch von Render (Fallback: 10000)
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host='0.0.0.0', port=port)
 
 def keep_alive():
     t = Thread(target=run)
@@ -70,8 +72,6 @@ async def on_ready():
         print(f"✅ {len(synced)} Slash-Commands erfolgreich mit Discord synchronisiert!")
     except Exception as e:
         print(f"❌ Fehler beim Synchronisieren der Slash-Commands: {e}")
-        
-    keep_alive()
 
 # ==================== HELPER LOGIKEN ====================
 async def do_uprank(author, guild, target, neue_rolle, grund):
@@ -346,6 +346,7 @@ async def clearwarns_slash(interaction: discord.Interaction, target: discord.Mem
     if not hat_rolle_aus_liste(interaction.user, ERLAUBTE_STAFF_ROLLEN) and interaction.user != interaction.guild.owner:
         await interaction.response.send_message("❌ **Fehler:** Keine Berechtigung!", ephemeral=True)
         return
+    
     verwarnungen_speicher[target.id] = 0
     await interaction.response.send_message(f"✅ Alle Verwarnungen für {target.mention} wurden gelöscht.")
 
@@ -459,8 +460,13 @@ async def help_command(ctx):
     embed.set_footer(text="SYSTEM X EH RP • Offizielles Verwaltungssystem", icon_url=ctx.guild.icon.url if ctx.guild.icon else None)
     await ctx.send(embed=embed)
 
-token = os.environ.get('DISCORD_TOKEN')
-if token:
-    bot.run(token)
-else:
-    print("❌ FEHLER: Kein DISCORD_TOKEN in den Environment Variables gefunden!")
+# ==================== START LOGIK ====================
+if __name__ == "__main__":
+    token = os.environ.get('DISCORD_TOKEN')
+    if token:
+        # Starte erst den Webserver für Render/UptimeRobot...
+        keep_alive()
+        # ... und starte DANACH den Discord-Bot!
+        bot.run(token)
+    else:
+        print("❌ FEHLER: Kein DISCORD_TOKEN in den Environment Variables gefunden!")
