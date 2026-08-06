@@ -1,10 +1,10 @@
 import os
 import discord
 from discord import app_commands
-import openai
+from openai import OpenAI
 
-# OpenAI Client initialisieren
-openai.api_key = os.getenv("OPENAI_API_KEY")
+# OpenAI Client mit dem Render-Key initialisieren
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # Speichert die IDs der freigeschalteten Spieler
 aktive_ki_chats = set()
@@ -51,7 +51,7 @@ def setup_ki_commands(bot):
                 
                 async with message.channel.typing():
                     try:
-                        response = openai.chat.completions.create(
+                        response = client.chat.completions.create(
                             model="gpt-4o-mini",
                             messages=[
                                 {"role": "system", "content": "Du bist ein hilfsbereiter Support-Assistent auf einem Discord Roleplay Server."},
