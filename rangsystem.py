@@ -15,7 +15,6 @@ STRICH_ROLLEN = [
     "| Strich 5"
 ]
 
-
 HIGHSTAFF_ROLLEN = [
     "┗⎯⎯⎯|🔴|HIGHTEAM|🔴|⎯⎯⎯┑",
     "┗⎯⎯⎯|▪️|PROJEKT LEAD|▪️|⎯⎯⎯┓",
@@ -38,12 +37,10 @@ class UprankRequestView(discord.ui.View):
             return
 
         # Striche vom Ziel-User entfernen
-        removed_any = False
         for r_name in STRICH_ROLLEN:
             rolle = discord.utils.get(interaction.guild.roles, name=r_name)
             if rolle and rolle in self.target_user.roles:
                 await self.target_user.remove_roles(rolle)
-                removed_any = True
 
         for child in self.children:
             child.disabled = True
@@ -77,19 +74,19 @@ class UprankRequestView(discord.ui.View):
 # ==================== MAIN SETUP ====================
 def setup_rangsystem(bot):
 
-    # Hilfsfunktion: Strich vergeben
+    # Hilfsfunktion: Strich vergeben (Sucht nach der konkreten Stufe)
     async def add_strike(member: discord.Member) -> str:
-        # Welche Strich-Rollen hat der User aktuell?
-        current_striche = [r.name for r in member.roles if r.name in STRICH_ROLLEN]
+        current_level = 0
+        for index, role_name in enumerate(STRICH_ROLLEN, start=1):
+            if any(r.name == role_name for r in member.roles):
+                current_level = index
         
-        if len(current_striche) >= 5:
+        if current_level >= 5:
             return "MAX_REACHED"
 
-        # Bestimmen, welcher Strich als nächstes kommt
-        next_index = len(current_striche) # 0 = Strich 1, 1 = Strich 2 ...
+        next_index = current_level
         next_role_name = STRICH_ROLLEN[next_index]
 
-        # Rolle auf Discord suchen
         next_role = discord.utils.get(member.guild.roles, name=next_role_name)
         if not next_role:
             return f"ROLE_NOT_FOUND:{next_role_name}"
@@ -157,26 +154,4 @@ def setup_rangsystem(bot):
 
 
     # COMMAND: /uprankrequest
-    @bot.tree.command(name="uprankrequest", description="Fordere einen Uprank an")
-    async def uprankrequest(interaction: discord.Interaction):
-        current_striche = [r.name for r in interaction.user.roles if r.name in STRICH_ROLLEN]
-
-        if len(current_striche) < 5 and STRICH_ROLLEN[4] not in current_striche:
-            await interaction.response.send_message("❌ Du benötigst **5 Striche**, um einen Uprank anzufordern!", ephemeral=True)
-            return
-
-        request_kanal = discord.utils.get(interaction.guild.text_channels, name=REQUEST_KANAL_NAME)
-        if not request_kanal:
-            await interaction.response.send_message(f"❌ Kanal `{REQUEST_KANAL_NAME}` nicht gefunden!", ephemeral=True)
-            return
-
-        embed = discord.Embed(
-            title="📩 NEUER UPRANK-ANTRAG",
-            description=f"Der Spieler {interaction.user.mention} hat **5 Striche** und fordert einen Uprank an!",
-            color=discord.Color.gold()
-        )
-        embed.add_field(name="Spieler", value=f"{interaction.user.name} (`{interaction.user.id}`)", inline=True)
-        embed.set_thumbnail(url=interaction.user.display_avatar.url)
-
-        await request_kanal.send(embed=embed, view=UprankRequestView(target_user=interaction.user))
-        await interaction.response.send_message("✅ Uprank-Antrag übermittelt!", ephemeral=True)
+    @bot.tree.command
