@@ -276,6 +276,49 @@ async def status(ctx):
     embed.add_field(name="👥 Überwachte Mitglieder", value=f"{ctx.guild.member_count}", inline=False)
     await ctx.send(embed=embed)
 
+# ==================== NEU: HILFE BEFEHL ====================
+@bot.command(name="help", aliases=["hilfe"])
+async def help_command(ctx):
+    embed = discord.Embed(
+        title="📋 System-Zentrale: Befehlsübersicht", 
+        description="Hier sind alle verfügbaren Befehle für das RP-Projekt. Nutze `^`, `/` oder `$` vor dem Befehl.",
+        color=discord.Color.blue()
+    )
+    
+    embed.add_field(
+        name="🔼 Team-Verwaltung", 
+        value=(
+            "`uprank @Spieler @Rolle [Grund]`\nBefördert ein Teammitglied.\n\n"
+            "`downrank @Spieler @Rolle [Grund]`\nDegradiert ein Teammitglied.\n\n"
+            "`teamkick @Spieler [Grund]`\nEntfernt alle Team-Ränge."
+        ), 
+        inline=False
+    )
+    
+    embed.add_field(
+        name="🛑 Sanktionen & Akten", 
+        value=(
+            "`warn @Spieler [Grund]`\nErteilt eine Verwarnung.\n\n"
+            "`clearwarns @Spieler`\nLöscht alle Verwarnungen.\n\n"
+            "`strike @Spieler [Grund]`\nTrägt einen Team-Strike ein.\n\n"
+            "`suspend @Spieler [Grund]`\nEntzieht alle Rechte (Auszeit).\n\n"
+            "`unsuspend @Spieler @AlteStaffRolle`\nHolt jemanden aus der Suspendierung."
+        ), 
+        inline=False
+    )
+    
+    embed.add_field(
+        name="⚙️ Allgemeines", 
+        value=(
+            "`status`\nZeigt die Bot-Latenz und Server-Auslastung.\n\n"
+            "`ping`\nSchneller Funktionstest."
+        ), 
+        inline=False
+    )
+    
+    embed.set_footer(text=f"Abgerufen von {ctx.author.name}")
+    await ctx.send(embed=embed)
+
 bot.run(os.environ.get('DISCORD_TOKEN'))
 
  
