@@ -8,12 +8,13 @@ tages_vc_striche = {}
 
 # ==================== CONFIGURATION ====================
 STRICH_ROLLEN = [
-    "│ Strich 1",
-    "│ Strich 2",
-    "│ Strich 3",
-    "│ Strich 4",
-    "│ Strich 5"
+    "| Strich 1",
+    "| Strich 2",
+    "| Strich 3",
+    "| Strich 4",
+    "| Strich 5"
 ]
+
 
 HIGHSTAFF_ROLLEN = [
     "┗⎯⎯⎯|🔴|HIGHTEAM|🔴|⎯⎯⎯┑",
