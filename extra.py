@@ -183,7 +183,14 @@ def setup_extra_commands(bot):
     async def userinfo_slash(interaction: discord.Interaction, spieler: discord.Member = None):
         target = spieler or interaction.user
         rollen = [r.mention for r in target.roles if r.name != "@everyone"]
-        rollen_str = ", ".join(rollen) if rollen else "Keine Rollen"
+        
+        # Rollen-Text erstellen und absichern, dass er nicht länger als 1000 Zeichen wird
+        if rollen:
+            rollen_str = ", ".join(rollen)
+            if len(rollen_str) > 1000:
+                rollen_str = rollen_str[:990] + "... (und weitere)"
+        else:
+            rollen_str = "Keine Rollen"
 
         embed = discord.Embed(title=f"👤 Userinfo • {target.name}", color=discord.Color.blue())
         embed.set_thumbnail(url=target.display_avatar.url)
@@ -192,7 +199,9 @@ def setup_extra_commands(bot):
         embed.add_field(name="Server beigetreten", value=target.joined_at.strftime("%d.%m.%Y"), inline=False)
         embed.add_field(name="Account erstellt", value=target.created_at.strftime("%d.%m.%Y"), inline=False)
         embed.add_field(name=f"Rollen ({len(rollen)})", value=rollen_str, inline=False)
+        
         await interaction.response.send_message(embed=embed)
+
 
     @bot.tree.command(name="serverinfo", description="Zeigt Informationen über diesen Discord-Server")
     async def serverinfo_slash(interaction: discord.Interaction):
