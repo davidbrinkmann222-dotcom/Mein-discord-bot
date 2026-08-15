@@ -88,7 +88,6 @@ async def on_ready():
 # ==================== WARTERAUM EVENT ====================
 @bot.event
 async def on_voice_state_update(member, before, after):
-    # Leitet den Voice-Wechsel direkt an deine warteraum.py weiter
     await handle_warteraum(member, before, after, bot)
 
 
@@ -183,27 +182,6 @@ async def do_teamkick(author, guild, target, grund):
         return True, embed
     except Exception as e:
         return False, f"❌ Fehler beim Teamkick: {e}"
-
-async def do_warn(author, guild, target, grund):
-    if not hat_rolle_aus_liste(author, ERLAUBTE_STAFF_ROLLEN) and author != guild.owner:
-        return False, "❌ **Fehler:** Keine Berechtigung!"
-        
-    if target.id not in verwarnungen_speicher:
-        verwarnungen_speicher[target.id] = 0
-    verwarnungen_speicher[target.id] += 1
-
-    embed = discord.Embed(
-        title="⚠️ SYSTEM X EH RP • VERWARNUNG", 
-        description=f"Gegen ein Mitglied wurde eine Verwarnung ausgesprochen.\n⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯",
-        color=discord.Color.from_rgb(241, 196, 15)
-    )
-    embed.set_thumbnail(url=target.display_avatar.url)
-    embed.add_field(name="👤 Betroffener", value=f"{target.mention}", inline=True)
-    embed.add_field(name="📊 Aktuelle Warns", value=f"`{verwarnungen_speicher[target.id]}`", inline=True)
-    embed.add_field(name="✍️ Ausgestellt von", value=f"{author.mention}", inline=True)
-    embed.add_field(name="📝 Grund", value=f"```text\n{grund}\n```", inline=False)
-    embed.set_footer(text="SYSTEM X EH RP • Aktenführung", icon_url=guild.icon.url if guild.icon else None)
-    return True, embed
 
 async def do_strike(author, guild, target, grund):
     if not hat_rolle_aus_liste(author, ERLAUBTE_STAFF_ROLLEN) and author != guild.owner:
@@ -331,7 +309,7 @@ async def teamkick_prefix(ctx, target: discord.Member = None, *, grund: str = "K
 async def teamkick_slash(interaction: discord.Interaction, target: discord.Member, grund: str = "Kein Grund angegeben"):
     success, res = await do_teamkick(interaction.user, interaction.guild, target, grund)
     if success: await interaction.response.send_message(embed=res)
-    else: await interaction.response.send_message(res, ephemeral=
+    else: await interaction.response.send_message(res, ephemeral=True)
 
 # --- STRIKE ---
 @bot.command(name="strike")
@@ -404,13 +382,6 @@ async def testjoin(ctx):
     else:
         await ctx.send("❌ Du musst in einem Sprachkanal sein!")
 
-import discord
-from discord import app_commands
-from discord.ext import commands
-
-import discord
-from discord import app_commands
-
 @bot.tree.command(name="rpstatus", description="Ändert den RP-Status mit einem detaillierten Embed")
 @app_commands.describe(zustand="Wähle 'an' oder 'aus'")
 @app_commands.choices(zustand=[
@@ -428,7 +399,6 @@ async def rpstatus(interaction: discord.Interaction, zustand: str):
     status_channel = discord.utils.get(interaction.guild.text_channels, name="🌐║status")
     
     if status_channel:
-        # Alte Nachrichten im Status-Channel löschen, damit es immer übersichtlich bleibt (optional)
         try:
             await status_channel.purge(limit=5)
         except:
@@ -438,7 +408,6 @@ async def rpstatus(interaction: discord.Interaction, zustand: str):
         await interaction.response.send_message("❌ Den Channel `🌐║status` konnte ich nicht finden!", ephemeral=True)
         return
 
-    # Das detaillierte Embed erstellen
     embed = discord.Embed(title="🌐 ┃ ROLLEPLAY STATUS UPDATE", color=0x00FF00 if zustand == "an" else 0xFF0000)
     
     if zustand == "an":
@@ -460,7 +429,6 @@ async def rpstatus(interaction: discord.Interaction, zustand: str):
         await status_channel.send(embed=embed)
         await interaction.response.send_message("✅ RP-Status erfolgreich auf **AUS** gesetzt und Embed gesendet!", ephemeral=True)
 
-# 2. Lock und Unlock als Slash-Commands (/lock und /unlock)
 @bot.tree.command(name="lock", description="Schließt alle Chats für normale User")
 async def lock_channels(interaction: discord.Interaction):
     role_name = "♕✯ |❘| David | Founder"
@@ -473,12 +441,10 @@ async def lock_channels(interaction: discord.Interaction):
     await interaction.response.send_message("🔒 Alle Kanäle werden geschlossen...", ephemeral=True)
     
     for channel in interaction.guild.text_channels:
-        # Entzieht der @everyone-Rolle das Schreibrecht komplett
         await channel.set_permissions(interaction.guild.default_role, send_messages=False)
         
     for channel in interaction.guild.text_channels:
         await channel.send("🔒 **Dieser Chat wurde vom Founder geschlossen!**")
-
 
 @bot.tree.command(name="unlock", description="Öffnet alle Chats wieder für alle")
 async def unlock_channels(interaction: discord.Interaction):
@@ -492,12 +458,10 @@ async def unlock_channels(interaction: discord.Interaction):
     await interaction.response.send_message("🔓 Alle Kanäle werden wieder geöffnet...", ephemeral=True)
     
     for channel in interaction.guild.text_channels:
-        # Setzt das Schreibrecht für @everyone auf Standard zurück
         await channel.set_permissions(interaction.guild.default_role, send_messages=None)
         
     for channel in interaction.guild.text_channels:
         await channel.send("🔓 **Dieser Chat ist wieder geöffnet!**")
-
 
 @bot.tree.command(name="status", description="Zeigt die Systemwerte des Bots an")
 async def status_slash(interaction: discord.Interaction):
