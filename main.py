@@ -80,8 +80,14 @@ async def on_ready():
     try:
         setup_extra_commands(bot)
         setup_rangsystem(bot)
-        synced = await bot.tree.sync()
-        print(f"✅ {len(synced)} Slash-Commands erfolgreich mit Discord synchronisiert!")
+        
+        # Server-ID direkt für sofortige Synchronisation
+        SERVER_ID = discord.Object(id=1517558770350162041) 
+        
+        bot.tree.copy_global_to(guild=SERVER_ID)
+        synced = await bot.tree.sync(guild=SERVER_ID)
+        
+        print(f"✅ {len(synced)} Slash-Commands sofort für den Server synchronisiert!")
     except Exception as e:
         print(f"❌ Fehler beim Synchronisieren der Slash-Commands: {e}")
 
