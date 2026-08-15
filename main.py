@@ -333,12 +333,6 @@ async def teamkick_slash(interaction: discord.Interaction, target: discord.Membe
     if success: await interaction.response.send_message(embed=res)
     else: await interaction.response.send_message(res, ephemeral=True)
 
-@bot.tree.command(name="warn", description="Erteile eine Verwarnung")
-async def warn_slash(interaction: discord.Interaction, target: discord.Member, grund: str = "Kein Grund angegeben"):
-    success, res = await do_warn(interaction.user, interaction.guild, target, grund)
-    if success: await interaction.response.send_message(embed=res)
-    else: await interaction.response.send_message(res, ephemeral=True)
-
 # --- CLEARWARNS ---
 @bot.command(name="clearwarns")
 async def clearwarns_prefix(ctx, target: discord.Member = None):
