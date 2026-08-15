@@ -429,40 +429,6 @@ async def rpstatus(interaction: discord.Interaction, zustand: str):
         await status_channel.send(embed=embed)
         await interaction.response.send_message("✅ RP-Status erfolgreich auf **AUS** gesetzt und Embed gesendet!", ephemeral=True)
 
-@bot.tree.command(name="lock", description="Schließt alle Chats für normale User")
-async def lock_channels(interaction: discord.Interaction):
-    role_name = "♕✯ |❘| David | Founder"
-    role = discord.utils.get(interaction.guild.roles, name=role_name)
-    
-    if not role or role not in interaction.user.roles:
-        await interaction.response.send_message("❌ Dazu hast du keine Berechtigung!", ephemeral=True)
-        return
-
-    await interaction.response.send_message("🔒 Alle Kanäle werden geschlossen...", ephemeral=True)
-    
-    for channel in interaction.guild.text_channels:
-        await channel.set_permissions(interaction.guild.default_role, send_messages=False)
-        
-    for channel in interaction.guild.text_channels:
-        await channel.send("🔒 **Dieser Chat wurde vom Founder geschlossen!**")
-
-@bot.tree.command(name="unlock", description="Öffnet alle Chats wieder für alle")
-async def unlock_channels(interaction: discord.Interaction):
-    role_name = "♕✯ |❘| David | Founder"
-    role = discord.utils.get(interaction.guild.roles, name=role_name)
-    
-    if not role or role not in interaction.user.roles:
-        await interaction.response.send_message("❌ Dazu hast du keine Berechtigung!", ephemeral=True)
-        return
-
-    await interaction.response.send_message("🔓 Alle Kanäle werden wieder geöffnet...", ephemeral=True)
-    
-    for channel in interaction.guild.text_channels:
-        await channel.set_permissions(interaction.guild.default_role, send_messages=None)
-        
-    for channel in interaction.guild.text_channels:
-        await channel.send("🔓 **Dieser Chat ist wieder geöffnet!**")
-
 @bot.tree.command(name="status", description="Zeigt die Systemwerte des Bots an")
 async def status_slash(interaction: discord.Interaction):
     embed = discord.Embed(
