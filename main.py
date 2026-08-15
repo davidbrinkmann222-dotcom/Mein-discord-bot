@@ -11,6 +11,7 @@ from extra import setup_extra_commands
 from rangsystem import setup_rangsystem
 from warteraum import handle_warteraum
 from ki_system import setup_ki_commands
+from moderation import setup_moderation
 
 # Kleiner Webserver für Render
 app = Flask('')
@@ -36,6 +37,7 @@ intents.voice_states = True  # Zwingend notwendig für den Warteraum!
 bot = commands.Bot(command_prefix=["/", "^", "$"], intents=intents, help_command=None)
 
 setup_ki_commands(bot)
+setup_moderation(bot)
 
 verwarnungen_speicher = {}
 
