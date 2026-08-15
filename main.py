@@ -331,25 +331,7 @@ async def teamkick_prefix(ctx, target: discord.Member = None, *, grund: str = "K
 async def teamkick_slash(interaction: discord.Interaction, target: discord.Member, grund: str = "Kein Grund angegeben"):
     success, res = await do_teamkick(interaction.user, interaction.guild, target, grund)
     if success: await interaction.response.send_message(embed=res)
-    else: await interaction.response.send_message(res, ephemeral=True)
-
-# --- CLEARWARNS ---
-@bot.command(name="clearwarns")
-async def clearwarns_prefix(ctx, target: discord.Member = None):
-    if not hat_rolle_aus_liste(ctx.author, ERLAUBTE_STAFF_ROLLEN) and ctx.author != ctx.guild.owner: return
-    if not target:
-        await ctx.send(f"❌ Nutzen: `{ctx.prefix}clearwarns @Spieler`")
-        return
-    verwarnungen_speicher[target.id] = 0
-    await ctx.send(f"✅ Alle Verwarnungen für {target.mention} wurden gelöscht.")
-
-@bot.tree.command(name="clearwarns", description="Lösche alle Verwarnungen eines Spielers")
-async def clearwarns_slash(interaction: discord.Interaction, target: discord.Member):
-    if not hat_rolle_aus_liste(interaction.user, ERLAUBTE_STAFF_ROLLEN) and interaction.user != interaction.guild.owner:
-        await interaction.response.send_message("❌ **Fehler:** Keine Berechtigung!", ephemeral=True)
-        return
-    verwarnungen_speicher[target.id] = 0
-    await interaction.response.send_message(f"✅ Alle Verwarnungen für {target.mention} wurden gelöscht.")
+    else: await interaction.response.send_message(res, ephemeral=
 
 # --- STRIKE ---
 @bot.command(name="strike")
